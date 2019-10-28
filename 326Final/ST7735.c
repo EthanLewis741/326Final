@@ -731,7 +731,7 @@ void static commonInit(const uint8_t *cmdList) {
   // bits5-2    reserved
   // bit1       EUSCI_B_CTLW0_STEM = 1; UCSTE pin enables slave
   // bit0       EUSCI_A_CTLW0_SWRST = 1; reset enabled
-  EUSCI_A3->CTLW0 = 0xAD83;
+  EUSCI_A3->CTLW0 = 0b1010 1101 1000 0011;
   // set the baud rate for the eUSCI which gets its clock from SMCLK
   // Clock_Init48MHz() from ClockSystem.c sets SMCLK = HFXTCLK/4 = 12 MHz
   // if the SMCLK is set to 12 MHz, divide by 3 for 4 MHz baud clock
