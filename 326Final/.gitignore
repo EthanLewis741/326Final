@@ -1,6 +1,11 @@
-/Debug/
-/.ccsproject
-/.cproject
-/.project
-/msp432p401r.cmd
-/system_msp432p401r.c
+**/Debug
+**/Release
+**/Debug/*
+**/Release/*
+**/.xdchelp
+**/.config
+**/.config/*
+**/.launches
+**/.launches/*
+**/targetConfigs
+**/targetConfigs/*
