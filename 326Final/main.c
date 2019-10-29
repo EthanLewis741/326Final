@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 Skip to content
 Search or jump to…
 
@@ -19,6 +20,8 @@ Using the Hello World guide, you’ll start a branch, write comments, and open a p
 a7d0ae5 7 minutes ago
 412 lines (327 sloc)  13.9 KB
 
+=======
+>>>>>>> branch 'master' of https://github.com/EthanLewis741/326Final.git
 /*
  * Name:            Ethan Lewis
  *                  Cat Costantino
@@ -157,6 +160,40 @@ int main(void)
         }
         if(Key == 255)
             Flag = 1;
+<<<<<<< HEAD
+    }
+
+}
+
+void MemWriteInit(void){
+        addr_pointer = CALIBRATION_START; // point to address in flash for saving data
+        uint8_t i;
+        for(i=0; i<16; i++)
+        {// read values in flash before programming
+            read_back_data[i] = *addr_pointer++;
+        }
+        /* Unprotecting Info Bank 0, Sector 0 */
+        MAP_FlashCtl_unprotectSector(FLASH_INFO_MEMORY_SPACE_BANK0,FLASH_SECTOR0);
+
+        /* Erase the flash sector starting CALIBRATION_START. */
+        while(!MAP_FlashCtl_eraseSector(CALIBRATION_START));
+
+}
+
+void MemWrite(char data[], unsigned int address, int length){
+    /* Program the flash with the new data. */
+        uint8_t i;
+        while (!MAP_FlashCtl_programMemory(data,(void*) address, length)); // leave first 4 bytes unprogrammed
+}
+
+void MemRead(void){
+    uint8_t i;
+    addr_pointer = CALIBRATION_START; // point to address in flash for saved data
+    for(i=0; i<16; i++)
+    {// read values in flash after programming
+        read_back_data[i] = *addr_pointer++;
+=======
+>>>>>>> branch 'master' of https://github.com/EthanLewis741/326Final.git
     }
 
 }
@@ -189,6 +226,246 @@ void MemRead(void){
     {// read values in flash after programming
         read_back_data[i] = *addr_pointer++;
     }
+}
+
+void flashwritefinish(void)
+{
+    /* Setting the sector back to protected */
+    MAP_FlashCtl_protectSector(FLASH_INFO_MEMORY_SPACE_BANK0,FLASH_SECTOR0);
+}
+
+void ClockInit(void){
+
+    volatile uint32_t i;
+    uint32_t currentPowerState;
+
+    currentPowerState = PCM->CTL0 & PCM_CTL0_CPM_MASK;
+
+    while ((PCM->CTL1 & PCM_CTL1_PMR_BUSY));
+    PCM->CTL0 = PCM_CTL0_KEY_VAL | PCM_CTL0_AMR_1;
+    while ((PCM->CTL1 & PCM_CTL1_PMR_BUSY));
+
+    /* Step 2: Configure Flash wait-state to 1 for both banks 0 & 1 */
+    FLCTL->BANK0_RDCTL = (FLCTL->BANK0_RDCTL & ~(FLCTL_BANK0_RDCTL_WAIT_MASK)) |
+            FLCTL_BANK0_RDCTL_WAIT_1;
+    FLCTL->BANK1_RDCTL = (FLCTL->BANK0_RDCTL & ~(FLCTL_BANK1_RDCTL_WAIT_MASK)) |
+            FLCTL_BANK1_RDCTL_WAIT_1 ;
+
+    /* Step 3: Configure HFXT to use 48MHz crystal, source to MCLK & HSMCLK*/
+
+
+    PJ->SEL0 |= BIT2 | BIT3;                // Configure PJ.2/3 for HFXT function
+    PJ->SEL1 &= ~(BIT2 | BIT3);
+
+    CS->KEY = CS_KEY_VAL ;                  // Unlock CS module for register access
+    CS->CTL2 |= CS_CTL2_HFXT_EN | CS_CTL2_HFXTFREQ_6 | CS_CTL2_HFXTDRIVE;
+    while(CS->IFG & CS_IFG_HFXTIFG)
+        CS->CLRIFG |= CS_CLRIFG_CLR_HFXTIFG;
+
+    /* Select MCLK & HSMCLK = HFXT, no divider */
+    CS->CTL1 = CS->CTL1 & ~(CS_CTL1_SELM_MASK | CS_CTL1_DIVM_MASK | CS_CTL1_SELS_MASK | CS_CTL1_DIVHS_MASK) |
+            CS_CTL1_SELM__HFXTCLK | CS_CTL1_SELS__HFXTCLK;
+
+    CS->CTL1 |= CS_CTL1_DIVS_2;
+
+    CS->KEY = 0;                            // Lock CS module from unintended accesses
+
+    /* Step 4: Output MCLK to port pin to demonstrate 48MHz operation */
+    P7->DIR |= BIT0;
+    P7->SEL0 |=BIT0;                 // Output MCLK
+    P7->SEL1 &= ~BIT0;
+
+}
+
+void DatePrint (void){
+
+    unsigned char timeDateReadback[7];
+
+    I2C1_burstRead(SLAVE_ADDR, 0, 7, timeDateReadback);
+
+    printf("%x:%x:%x\t",timeDateReadback[2],timeDateReadback[1],timeDateReadback[0]);
+    switch(timeDateReadback[3])
+    {
+    case 0:
+        printf("Sunday\t");
+        break;
+    case 1:
+        printf("Monday\t");
+        break;
+    case 2:
+        printf("Tuesday\t");
+        break;
+    case 3:
+        printf("Wednesday\t");
+        break;
+    case 4:
+        printf("Thursday\t");
+        break;
+    case 5:
+        printf("Friday\t");
+        break;
+    case 6:
+        printf("Saturday\t");
+        break;
+    }
+    printf("%x/%x/20%x",timeDateReadback[5],timeDateReadback[4],timeDateReadback[6]);
+    printf("\n");
+
+    SysTick_delay(237);
+}
+
+void I2C1_init(void) {
+    EUSCI_B1->CTLW0 |= 1;             /* disable UCB1 during config */
+    EUSCI_B1->CTLW0 = 0x0F81;         /* 7-bit slave addr, master, I2C, synch mode, use SMCLK */
+    EUSCI_B1->BRW = 30;               /* set clock prescaler 3MHz / 30 = 100kHz */
+    P6->SEL0 |= 0x30;             /* P6.5, P6.4 for UCB1 */
+    P6->SEL1 &= ~0x30;
+    EUSCI_B1->CTLW0 &= ~1;            /* enable UCB1 after config */
+}
+
+int I2C1_burstWrite(int slaveAddr, unsigned char memAddr, int byteCount, unsigned char* data)
+{
+    if (byteCount <= 0)
+        return -1;              /* no write was performed */
+
+    EUSCI_B1->I2CSA = slaveAddr;      /* setup slave address */
+    EUSCI_B1->CTLW0 |= 0x0010;        /* enable transmitter */
+    EUSCI_B1->CTLW0 |= 0x0002;        /* generate START and send slave address */
+    while((EUSCI_B1->CTLW0 & 2));   /* wait until slave address is sent */
+    EUSCI_B1->TXBUF = memAddr;        /* send memory address to slave */
+
+    /* send data one byte at a time */
+    do {
+        while(!(EUSCI_B1->IFG & 2));  /* wait till it's ready to transmit */
+        EUSCI_B1->TXBUF = *data++;    /* send data to slave */
+        byteCount--;
+        __delay_cycles(1000);
+     } while (byteCount > 0);
+
+    while(!(EUSCI_B1->IFG & 2));      /* wait till last transmit is done */
+    EUSCI_B1->CTLW0 |= 0x0004;        /* send STOP */
+    while(EUSCI_B1->CTLW0 & 4) ;      /* wait until STOP is sent */
+
+    return 0;                   /* no error */
+}
+
+int I2C1_burstRead(int slaveAddr, unsigned char memAddr, int byteCount, unsigned char* data) {
+    if (byteCount <= 0)
+        return -1;              /* no read was performed */
+
+    EUSCI_B1->I2CSA = slaveAddr;      /* setup slave address */
+    EUSCI_B1->CTLW0 |= 0x0010;        /* enable transmitter */
+    EUSCI_B1->CTLW0 |= 0x0002;        /* generate START and send slave address */
+    while((EUSCI_B1->CTLW0 & 2));   /* wait until slave address is sent */
+    EUSCI_B1->TXBUF = memAddr;        /* send memory address to slave */
+    while(!(EUSCI_B1->IFG & 2));      /* wait till last transmit is done */
+    EUSCI_B1->CTLW0 &= ~0x0010;       /* enable receiver */
+    EUSCI_B1->CTLW0 |= 0x0002;        /* generate RESTART and send slave address */
+    while(EUSCI_B1->CTLW0 & 2);       /* wait till RESTART is finished */
+
+    /* receive data one byte at a time */
+    do {
+        if (byteCount == 1)     /* when only one byte of data is left */
+            EUSCI_B1->CTLW0 |= 0x0004; /* setup to send STOP after the last byte is received */
+
+        while(!(EUSCI_B1->IFG & 1));  /* wait till data is received */
+        *data++ = EUSCI_B1->RXBUF;    /* read the received data */
+        byteCount--;
+    } while (byteCount);
+
+    while(EUSCI_B1->CTLW0 & 4) ;      /* wait until STOP is sent */
+
+    return 0;                   /* no error */
+}
+
+
+void SysTick_delay (uint16_t delay)
+{ // Systick delay function
+    static int Init = 1;
+    if(Init)
+    {
+        SysTick -> CTRL = 0; // disable SysTick During step
+        SysTick -> LOAD = 0x00FFFFFF; // max reload value
+        SysTick -> VAL = 0; // any write to current clears it
+        SysTick -> CTRL = 0x00000005; // enable systic, 3MHz, No Interrupts
+        Init = 0;
+    }
+    SysTick -> LOAD = ((delay * 3000) - 1); //delay for 1 msecond per delay value
+    SysTick -> VAL = 0; // any write to CVR clears it
+    while ( (SysTick->CTRL & 0x00010000) == 0); // wait for flag to be SET
+}
+
+char keypad_getkey() { // assumes port 4 bits 0-3 are connected to rows
+
+    int row, col, num=0; // bits 4,5,6 are connected to columns
+    const char column_select[] = {0b00010000, 0b01000000, 0b10000000}; // one column is active
+
+    static int Init = 1;
+    if(Init)
+    {
+        //Columns
+        P2->SEL0    &=~ (BIT7|BIT6|BIT4);
+        P2->SEL1    &=~ (BIT7|BIT6|BIT4);
+        P2->DIR     &=~ (BIT7|BIT6|BIT4);
+        P2->REN     |=  (BIT7|BIT6|BIT4);
+        P2->OUT     |=  (BIT7|BIT6|BIT4);
+
+        //Rows
+        P5->SEL0    &=~ BIT6;
+        P5->SEL1    &=~ BIT6;
+        P5->DIR     &=~ BIT6;
+        P5->REN     |=  BIT6;
+        P5->OUT     |=  BIT6;
+
+        P6->SEL0    &=~ (BIT6|BIT7);
+        P6->SEL1    &=~ (BIT6|BIT7);
+        P6->DIR     &=~ (BIT6|BIT7);
+        P6->REN     |=  (BIT6|BIT7);
+        P6->OUT     |=  (BIT6|BIT7);
+
+        P2->SEL0    &=~ BIT3; // Setup the P1.1 on the Launchpad as Input, Pull Up Resistor
+        P2->SEL1    &=~ BIT3;
+        P2->DIR     &=~ BIT3;
+        P2->REN     |=  BIT3;
+        P2->OUT     |=  BIT3; //Input, Pull up Resistor
+
+        Init = 0;
+    }
+
+    // Activates one column at a time, read the input to see which column
+    for (col = 0; col < 3; col++) {
+        P2->DIR &= ~0b11010000; // 1 disable all columns
+        P2->DIR |= column_select[col]; // 2 enable one column at a time
+        P2->OUT &= ~column_select[col]; // 3 drive the active column low
+
+        __delay_cycles(10); // 4 wait for signal to settle
+
+        row = ( ((P5->IN & BIT6)>>3) | ((P6 ->IN & (BIT6))>>4) | ((P6 ->IN & (BIT7))>>6) | ((P2->IN & BIT3)>>3)); // 5 read all rows
+
+        P2->OUT |= column_select[col]; // 6 drive the active column high
+
+        if (row != 0b00001111)
+            break; // 7 if one of the input is low,
+    // some key is pressed.
+    }
+
+    P2->OUT |= 0b11010000; // 8 drive all columns high before disable
+    P2->DIR &= ~0b11010000; // 9 disable all columns
+
+    if (col == 3)
+        num =  255; // 10 if we get here, no key is pressed
+    // 10 gets here when one of the columns has key pressed,
+    // check which row it is
+    if (row == 0b00001110) num = col + 1; // key in row 0
+    if (row == 0b00001101) num = 3 + col + 1; // key in row 1
+    if (row == 0b00001011) num = 6 + col + 1; // key in row 2
+    if (row == 0b00000111) num = 9 + col + 1; // key in row 3
+    if(num == 11)
+        num = 0;
+
+
+    return num;
+
 }
 
 void flashwritefinish(void)

@@ -731,7 +731,7 @@ void static commonInit(const uint8_t *cmdList) {
   // bits5-2    reserved
   // bit1       EUSCI_B_CTLW0_STEM = 1; UCSTE pin enables slave
   // bit0       EUSCI_A_CTLW0_SWRST = 1; reset enabled
-  EUSCI_A3->CTLW0 = 0b1010 1101 1000 0011;
+  EUSCI_A3->CTLW0 = 0xAD83;
   // set the baud rate for the eUSCI which gets its clock from SMCLK
   // Clock_Init48MHz() from ClockSystem.c sets SMCLK = HFXTCLK/4 = 12 MHz
   // if the SMCLK is set to 12 MHz, divide by 3 for 4 MHz baud clock
@@ -1135,10 +1135,10 @@ uint32_t ST7735_DrawString(uint16_t x, uint16_t y, char *pt, int16_t textColor){
   uint32_t count = 0;
   if(y>15) return 0;
   while(*pt){
-	  //ST7735_DrawCharS(x*6, y*10, *pt, textColor, ST7735_BLACK, 1);
-	  ST7735_DrawCharS(x*6, y*10, *pt, textColor, ST7735_BLACK, 2);
+	  ST7735_DrawCharS(x*6, y*10, *pt, textColor, ST7735_BLACK, 1);
+	  //ST7735_DrawCharS(x*6, y*10, *pt, textColor, ST7735_BLACK, 2);
     pt++;
-    x = x+2;
+    x = x+1;
     if(x>20) return count;  // number of characters printed
     count++;
   }
