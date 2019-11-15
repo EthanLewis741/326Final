@@ -4,13 +4,21 @@
  *  Created on: Oct 14, 2019
  *      Author: lewiset
  */
+#define CALIBRATION_START 0x000200054 // Starting memory address in flash
+uint8_t read_back_data[16]; // array to hold values read back from flash
+uint8_t* addr_pointer; // pointer to address in flash for reading back values
 
 #ifndef FUNCTIONS_H_
 #define FUNCTIONS_H_
 
+
+////////////////////////////////////////////////////////////
+///                    General                          ///
+///////////////////////////////////////////////////////////
 void SysTick_delay (uint16_t delay)
 { // Systick delay function
     static int Init = 1;
+    int i;
     if(Init)
     {
         SysTick -> CTRL = 0; // disable SysTick During step
@@ -19,9 +27,13 @@ void SysTick_delay (uint16_t delay)
         SysTick -> CTRL = 0x00000005; // enable systic, 3MHz, No Interrupts
         Init = 0;
     }
-    SysTick -> LOAD = ((delay * 3000) - 1); //delay for 1 msecond per delay value
-    SysTick -> VAL = 0; // any write to CVR clears it
-    while ( (SysTick->CTRL & 0x00010000) == 0); // wait for flag to be SET
+    for (i = 0; i<=delay; i++)
+    {
+        SysTick -> LOAD = ((48000) - 1); //delay for 1 msecond per delay value
+        SysTick -> VAL = 0; // any write to CVR clears it
+        while ( (SysTick->CTRL & 0x00010000) == 0); // wait for flag to be SET
+    }
+
 }
 
 void ClockInit(void){
@@ -59,6 +71,58 @@ void ClockInit(void){
     CS->CTL1 |= CS_CTL1_DIVS_2;
 
     CS->KEY = 0;                            // Lock CS module from unintended accesses
+}
+
+////////////////////////////////////////////////////////////
+///                    Rotary Encoder                    ///
+///////////////////////////////////////////////////////////
+void TimerA_Capture_Init (void) // set up timer A2.1 capture
+{
+    P5->SEL0 |= BIT6; // TA0.CCI2A input capture pin, second function
+    P5->SEL1 &= ~ BIT6; // TA0.CCI2A input capture pin, second function
+    P5->DIR &= ~ BIT6;
+
+    TIMER_A2->CTL |= TIMER_A_CTL_TASSEL_2 | // Use SMCLK as clock source,
+    TIMER_A_CTL_MC_2| // Start timer in continuous mode
+    TIMER_A_CTL_CLR; // clear TA0R
+    //(0x0214)
+    TIMER_A2->CCTL[1] |= TIMER_A_CCTLN_CM_3 | // Capture rising and falling edge,
+    TIMER_A_CCTLN_CCIS_0 | // Use CCI2A
+    TIMER_A_CCTLN_CCIE | // Enable capture interrupt
+    TIMER_A_CCTLN_CAP | // Enable capture mode,
+    TIMER_A_CCTLN_SCS; // Synchronous capture
+    //(0x4910)
+
+    NVIC_EnableIRQ (TA2_N_IRQn); // enable capture interrupt
+}
+
+uint8_t RotaryButton()
+{
+    #define pin         P4
+    #define bit         BIT1
+    static int Init = 1;
+    if(Init)
+    {
+        pin->SEL0    &=~ bit; // Setup the P1.1 on the Launchpad as Input, Pull Up Resistor
+        pin->SEL1    &=~ bit;
+        pin->DIR     &=~ bit;
+        pin->REN     |=  bit;
+        pin->OUT     |=  bit; //Input, Pull Up Resistor
+        Init = 0;
+    }
+
+    int i;
+    int shift = log(bit)/log(2);
+    static uint16_t State = 0; // Current debounce status
+
+    for(i=0;i<100;i++)
+    {
+        State=((State<<1) | (pin ->IN & bit)>> shift | 0xf800);
+        if(State==0xfc00)
+            return 1;
+    }
+    __delay_cycles(2);
+    return 0;
 }
 
 ////////////////////////////////////////////////////////////
@@ -177,6 +241,16 @@ uint8_t DebounceSwitch1()
 {
     #define pin         P6
     #define bit         BIT4
+    static int Init = 1;
+    if(Init)
+    {
+        pin->SEL0    &=~ bit; // Setup the P1.1 on the Launchpad as Input, Pull Up Resistor
+        pin->SEL1    &=~ bit;
+        pin->DIR     &=~ bit;
+        pin->REN     |=  bit;
+        pin->OUT     |=  bit; //Input, Pull Up Resistor
+        Init = 0;
+    }
 
     int shift = log(bit)/log(2);
     static uint16_t State = 0; // Current debounce status
@@ -190,4 +264,6 @@ uint8_t DebounceSwitch1()
     __delay_cycles(2);
     return 0;
 }
+
+
 #endif /* FUNCTIONS_H_ */
