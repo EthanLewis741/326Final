@@ -738,8 +738,8 @@ void static commonInit(const uint8_t *cmdList) {
   EUSCI_A3->BRW = 3;
   // modulation is not used in SPI mode, so clear EUSCI_A3->MCTLW
   EUSCI_A3->MCTLW = 0;
-  P9->SEL0 |= 0xB0;
-  P9->SEL1 &= ~0xB0;                      // configure P9.7, P9.5, and P9.4 as primary module function
+  P9->SEL0 |= 0b10100000;
+  P9->SEL1 &= ~0b10100000;                      // configure P9.7, P9.5, and P9.4 as primary module function
   P9->SEL0 &= ~0x0C;
   P9->SEL1 &= ~0x0C;                      // configure P9.3 and P9.2 as GPIO (Reset and D/C pins)
   P9->DIR |= 0x0C;                        // make P9.3 and P9.2 out (Reset and D/C pins)

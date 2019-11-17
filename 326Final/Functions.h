@@ -68,11 +68,28 @@ void ClockInit(void){
     CS->CTL1 = CS->CTL1 & ~(CS_CTL1_SELM_MASK | CS_CTL1_DIVM_MASK | CS_CTL1_SELS_MASK | CS_CTL1_DIVHS_MASK) |
             CS_CTL1_SELM__HFXTCLK | CS_CTL1_SELS__HFXTCLK;
 
-    CS->CTL1 |= CS_CTL1_DIVS_2;
+    //CS->CTL1 |= CS_CTL1_DIVS_2;
 
     CS->KEY = 0;                            // Lock CS module from unintended accesses
 }
 
+void LCDSel(int LCD)
+{
+    if(LCD == 0) P9->OUT &=~(BIT4|BIT6);
+    else if(LCD == 1){ P9->OUT |= (BIT4); P9->OUT &=~(BIT6);}
+    else if(LCD == 2){ P9->OUT |= (BIT6); P9->OUT &=~(BIT4);}
+    else if(LCD == 3) P9->OUT |=  (BIT4|BIT6);
+}
+
+void PinInit (void)
+{
+    //Rotary Encoder Button
+    P3->SEL0    &=~ BIT3;
+    P3->SEL1    &=~ BIT3;
+    P3->DIR     &=~ BIT3;
+    P3->REN     |=  BIT3;
+    P3->OUT     &=~  BIT3; //Input, Pull Down Resistor
+}
 ////////////////////////////////////////////////////////////
 ///                    Rotary Encoder                    ///
 ///////////////////////////////////////////////////////////
