@@ -68,7 +68,7 @@ void ClockInit(void){
     CS->CTL1 = CS->CTL1 & ~(CS_CTL1_SELM_MASK | CS_CTL1_DIVM_MASK | CS_CTL1_SELS_MASK | CS_CTL1_DIVHS_MASK) |
             CS_CTL1_SELM__HFXTCLK | CS_CTL1_SELS__HFXTCLK;
 
-    //CS->CTL1 |= CS_CTL1_DIVS_2;
+    CS->CTL1 |= CS_CTL1_DIVS_2;
 
     CS->KEY = 0;                            // Lock CS module from unintended accesses
 }
@@ -84,11 +84,11 @@ void LCDSel(int LCD)
 void PinInit (void)
 {
     //Rotary Encoder Button
-    P3->SEL0    &=~ BIT3;
-    P3->SEL1    &=~ BIT3;
-    P3->DIR     &=~ BIT3;
-    P3->REN     |=  BIT3;
-    P3->OUT     &=~  BIT3; //Input, Pull Down Resistor
+    P6->SEL0    &=~ BIT6;
+    P6->SEL1    &=~ BIT6;
+    P6->DIR     &=~ BIT6;
+    P6->REN     |=  BIT6;
+    P6->OUT     &=~ BIT6; //Input, Pull Down Resistor
 }
 ////////////////////////////////////////////////////////////
 ///                    Rotary Encoder                    ///
@@ -115,8 +115,8 @@ void TimerA_Capture_Init (void) // set up timer A2.1 capture
 
 uint8_t RotaryButton()
 {
-    #define pin         P4
-    #define bit         BIT1
+    #define pin         P5
+    #define bit         BIT7
     static int Init = 1;
     if(Init)
     {
@@ -132,7 +132,7 @@ uint8_t RotaryButton()
     int shift = log(bit)/log(2);
     static uint16_t State = 0; // Current debounce status
 
-    for(i=0;i<100;i++)
+    for(i=0;i<10;i++)
     {
         State=((State<<1) | (pin ->IN & bit)>> shift | 0xf800);
         if(State==0xfc00)

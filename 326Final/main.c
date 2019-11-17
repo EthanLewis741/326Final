@@ -19,7 +19,7 @@ unsigned char timeDateToSet[15] = {55, 58, 23, 05, 21, 11, 19, 0}; // Place hold
 volatile char Sec[2], Min[2], Hour[2], DoW[15], Month[2], Day[2], Year[2];
 volatile char SecOld[2], MinOld[2], HourOld[2], DoWOld[15], MonthOld[2], DayOld[2], YearOld[2];
 
-#define SLAVE_ADDR 0x68 // RTC slave address
+#define SLAVE_ADDR 0x68 // RTC slave addressb
 volatile int CWcount, CCWcount;
 
 volatile int Speed= 70;
@@ -36,7 +36,7 @@ int main(void)
     P9->SEL0 &= ~ (BIT4|BIT6);
     P9->SEL1 &= ~ (BIT4|BIT6);                      // configure P9.2 (D/C), P9.3 (Reset), and P9.4 (TFT_CS) as GPIO
     P9->DIR |=    (BIT4|BIT6);                        // make P9.2 (D/C), P9.3 (Reset), and P9.4 (TFT_CS) out
-    //P9->OUT |=  (BIT4|BIT6);                      // configure P9.2 (D/C), P9.3 (Reset), and P9.4 (TFT_CS) as GPIO
+//    P9->OUT |=  (BIT4|BIT6);                      // configure P9.2 (D/C), P9.3 (Reset), and P9.4 (TFT_CS) as GPIO
 
      // index
     // halting the watch dog is done in the system_msp432p401r.c startup
@@ -45,10 +45,11 @@ int main(void)
     TimerA_Capture_Init();
     PinInit();
 
+
     I2C1_init(); // Initiate the I2C communication for the RTC
 
     TIMER32_1->CONTROL = 0b11100111;
-    TIMER32_1->LOAD = 3000000;
+    //TIMER32_1->LOAD = 3000000;
     NVIC_EnableIRQ( T32_INT1_IRQn );
 
     __enable_irq ( ); // enable global interrupts
@@ -272,7 +273,7 @@ uint32_t ST7735_DrawStringV2(uint16_t x, uint16_t y, char *pt, int16_t textColor
 void TA2_N_IRQHandler(void) // Timer A2 interrupt Rotary Encoder
 {
     __delay_cycles(2000);
-    #define DT (P3->IN & BIT3)>>3
+    #define DT (P6->IN & BIT6)>>6
     #define Clock (P5->IN & BIT6)>>6
 
     if(DT == Clock)
@@ -280,7 +281,7 @@ void TA2_N_IRQHandler(void) // Timer A2 interrupt Rotary Encoder
     else
         CWcount++;
 
-    //__delay_cycles(20);
+//    __delay_cycles(20);
     SysTick_delay(10);
 
     TIMER_A2->CCTL[1] &= ~(TIMER_A_CCTLN_CCIFG); // Clear the interrupt flag
