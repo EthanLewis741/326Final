@@ -98,6 +98,7 @@
 uint32_t StX=0; // position along the horizonal axis 0 to 20
 uint32_t StY=0; // position along the vertical axis 0 to 15
 uint16_t StTextColor = ST7735_YELLOW;
+int LCDSelect;
 
 #define ST7735_NOP     0x00
 #define ST7735_SWRESET 0x01
@@ -482,11 +483,17 @@ static int16_t _height = ST7735_TFTHEIGHT;
 // Outputs: 8-bit reply
 // Assumes: UCA3 and Port 9 have already been initialized and enabled
 uint8_t static writecommand(uint8_t c) {
-  while((EUSCI_A3->IFG&0x0002)==0x0000){};    // wait until EUSCI_A3->TXBUF empty
-  DC &= ~DC_BIT;
-  EUSCI_A3->TXBUF = c;                        // command out
-  while((EUSCI_A3->IFG&0x0001)==0x0000){};    // wait until EUSCI_A3->RXBUF full
-  return EUSCI_A3->RXBUF;                     // return the response
+    if(LCDSelect == 1){ P9->OUT |= (BIT4); P9->OUT &=~(BIT6);}
+    else if(LCDSelect == 2){ P9->OUT |= (BIT6); P9->OUT &=~(BIT4);}
+    else if(LCDSelect == 3) P9->OUT |=  (BIT4|BIT6);
+
+    while((EUSCI_A3->IFG&0x0002)==0x0000){};    // wait until EUSCI_A3->TXBUF empty
+    DC &= ~DC_BIT;
+    EUSCI_A3->TXBUF = c;                        // command out
+    while((EUSCI_A3->IFG&0x0001)==0x0000){};    // wait until EUSCI_A3->RXBUF full
+
+    P9->OUT &=~(BIT4|BIT6);
+    return EUSCI_A3->RXBUF;                     // return the response
 }
 
 
@@ -495,11 +502,18 @@ uint8_t static writecommand(uint8_t c) {
 // Outputs: 8-bit reply
 // Assumes: UCA3 and Port 9 have already been initialized and enabled
 uint8_t static writedata(uint8_t c) {
-  while((EUSCI_A3->IFG&0x0002)==0x0000){};    // wait until EUSCI_A3->TXBUF empty
-  DC |= DC_BIT;
-  EUSCI_A3->TXBUF = c;                        // data out
-  while((EUSCI_A3->IFG&0x0001)==0x0000){};    // wait until EUSCI_A3->RXBUF full
-  return EUSCI_A3->RXBUF;                     // return the response
+
+    if(LCDSelect == 1){ P9->OUT |= (BIT4); P9->OUT &=~(BIT6);}
+    else if(LCDSelect == 2){ P9->OUT |= (BIT6); P9->OUT &=~(BIT4);}
+    else if(LCDSelect == 3) P9->OUT |=  (BIT4|BIT6);
+
+    while((EUSCI_A3->IFG&0x0002)==0x0000){};    // wait until EUSCI_A3->TXBUF empty
+    DC |= DC_BIT;
+    EUSCI_A3->TXBUF = c;                        // data out
+    while((EUSCI_A3->IFG&0x0001)==0x0000){};    // wait until EUSCI_A3->RXBUF full
+
+    ;
+    return EUSCI_A3->RXBUF;                     // return the response
 }
 
 

@@ -59,19 +59,60 @@ int main(void)
 
     //LCDSel(2);
     //ST7735_DrawStringV2(7,10, "Test"  ,0xFFE0,2,2);
-    //SysTick_delay(1);
+
 
     while(1)
     {
 
+        //LCDSel(0);
+        //LCDSelect = 3;
+        //ST7735_FillScreen(0xFFFF);
+        SysTick_delay(1000);
+
         //LCDSel(1);
-        DateInput();
+        LCDSelect = 1;
+        ST7735_DrawStringV2(3,4, "Test" ,0x001F,2,2);//Print it to the LCD!
+        circleBres(10, 10, 5 ,0x001F);
+        //SysTick_delay(1);
+        //circleBres(10, 20, 5 ,0x001F);
+        SysTick_delay(3000);
+
+        //LCDSel(2);
+        LCDSelect = 2;
+        ST7735_DrawStringV2(3,4, "Test" ,0x001F,2,2);//Print it to the LCD!
+        circleBres(10, 10, 5 ,0x001F);
+        //SysTick_delay(1);
+        //circleBres(10, 20, 5 ,0x001F);
+        SysTick_delay(3000);
+
+//        LCDSel(0);
+//        SysTick_delay(3000);
+        //DateInput();
+
     }
 
 }
 
 
+void MainMenu(void)
+{
+    int State = 0, Flag = 0,r;
 
+    if(CWcount)     {State++; (State>2)?State=0:0; CWcount = 0;}
+    if(CCWcount)    {State--; (State<0)?State=2:0; CCWcount = 0;}
+
+        switch(State){
+        case 0: // Alarm History
+            circleBres(10, 10, 10,ST7735_RED);
+
+        case 1: // Time Set
+
+        case 2: //Alarm Config
+
+
+        }
+
+}
 
 void MeasurmentDisplay1(void)
 {
@@ -131,6 +172,7 @@ void MeasurmentDisplay1(void)
 
 void DateInput(void){
     int State = 0, DoneFlag = 0, Num, i;
+    //ST7735_FillScreen(0xFFFF);
 
     while(!DoneFlag)
     {
@@ -147,8 +189,8 @@ void DateInput(void){
 
             break;
         case 1: // Minutes
-            if(CWcount) {timeDateToSet[0]++; CWcount = 0;}
-            if(CCWcount) {timeDateToSet[0]--; CCWcount = 0;}
+            if(CWcount) {timeDateToSet[1]++; CWcount = 0;}
+            if(CCWcount) {timeDateToSet[1]--; CCWcount = 0;}
 
             if(timeDateToSet[1]>59)
                 timeDateToSet[1] = 0;
@@ -254,26 +296,15 @@ void DateInput(void){
     }
 }
 
-uint32_t ST7735_DrawStringV2(uint16_t x, uint16_t y, char *pt, int16_t textColor, int16_t size, int16_t space){
-  uint32_t count = 0;
-  if(y>15) return 0;
-  while(*pt){
-      ST7735_DrawCharS(x*6, y*10, *pt, textColor, ST7735_BLACK, size);
-      //ST7735_DrawCharS(x*6, y*10, *pt, textColor, ST7735_BLACK, 2);
-    pt++;
-    x = x+space;
-    if(x>20) return count;  // number of characters printed
-    count++;
-  }
-  return count;  // number of characters printed
-}
+
+
 ////////////////////////////////////////////////////////////
 ///                        Interrupts                    ///
 ///////////////////////////////////////////////////////////
 void TA2_N_IRQHandler(void) // Timer A2 interrupt Rotary Encoder
 {
     __delay_cycles(2000);
-    #define DT (P6->IN & BIT6)>>6
+    #define DT (P5->IN & BIT6)>>7
     #define Clock (P5->IN & BIT6)>>6
 
     if(DT == Clock)

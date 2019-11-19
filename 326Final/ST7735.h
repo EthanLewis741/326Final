@@ -91,6 +91,7 @@
 #ifndef _ST7735H_
 #define _ST7735H_
 
+extern int LCDSelect;
 // some flags for ST7735_InitR()
 enum initRFlags{
   none,

@@ -4,6 +4,9 @@
  *  Created on: Oct 14, 2019
  *      Author: lewiset
  */
+#include "ST7735.h"
+//#include "main.c"
+
 #define CALIBRATION_START 0x000200054 // Starting memory address in flash
 uint8_t read_back_data[16]; // array to hold values read back from flash
 uint8_t* addr_pointer; // pointer to address in flash for reading back values
@@ -15,6 +18,10 @@ uint8_t* addr_pointer; // pointer to address in flash for reading back values
 ////////////////////////////////////////////////////////////
 ///                    General                          ///
 ///////////////////////////////////////////////////////////
+//void test(void)
+//{
+//    ST7735_DrawStringV2(3,4, Hour ,0xFFE0,2,2);//Print it to the LCD!
+//}
 void SysTick_delay (uint16_t delay)
 { // Systick delay function
     static int Init = 1;
@@ -68,17 +75,9 @@ void ClockInit(void){
     CS->CTL1 = CS->CTL1 & ~(CS_CTL1_SELM_MASK | CS_CTL1_DIVM_MASK | CS_CTL1_SELS_MASK | CS_CTL1_DIVHS_MASK) |
             CS_CTL1_SELM__HFXTCLK | CS_CTL1_SELS__HFXTCLK;
 
-    CS->CTL1 |= CS_CTL1_DIVS_2;
+    //CS->CTL1 |= CS_CTL1_DIVS_2;
 
     CS->KEY = 0;                            // Lock CS module from unintended accesses
-}
-
-void LCDSel(int LCD)
-{
-    if(LCD == 0) P9->OUT &=~(BIT4|BIT6);
-    else if(LCD == 1){ P9->OUT |= (BIT4); P9->OUT &=~(BIT6);}
-    else if(LCD == 2){ P9->OUT |= (BIT6); P9->OUT &=~(BIT4);}
-    else if(LCD == 3) P9->OUT |=  (BIT4|BIT6);
 }
 
 void PinInit (void)
@@ -90,9 +89,81 @@ void PinInit (void)
     P6->REN     |=  BIT6;
     P6->OUT     &=~ BIT6; //Input, Pull Down Resistor
 }
+
+////////////////////////////////////////////////////////////
+///                    LCD Stuff                        ///
+///////////////////////////////////////////////////////////
+void LCDSel(int LCD)
+{
+    if(LCD == 0) P9->OUT &=~(BIT4|BIT6);
+    else if(LCD == 1){ P9->OUT |= (BIT4); P9->OUT &=~(BIT6);}
+    else if(LCD == 2){ P9->OUT |= (BIT6); P9->OUT &=~(BIT4);}
+    else if(LCD == 3) P9->OUT |=  (BIT4|BIT6);
+}
+
+void drawCircle(int xc, int yc, int x, int y, int color)
+{
+    ST7735_DrawPixel(xc+x, yc+y, color);
+    ST7735_DrawPixel(xc-x, yc+y, color);
+    ST7735_DrawPixel(xc+x, yc-y, color);
+    ST7735_DrawPixel(xc-x, yc-y, color);
+    ST7735_DrawPixel(xc+y, yc+x, color);
+    ST7735_DrawPixel(xc-y, yc+x, color);
+    ST7735_DrawPixel(xc+y, yc-x, color);
+    ST7735_DrawPixel(xc-y, yc-x, color);
+}
+
+void circleBres(int xc, int yc, int rad, int color)
+{
+    int r,x,y,d;
+    for(r=0; r<=rad; r++)
+    {
+        x = 0, y = r;
+        d = 3 - 2 * r;
+        drawCircle(xc, yc, x, y, color);
+        while (y >= x)
+        {
+            // for each pixel we will
+            // draw all eight pixels
+
+            x++;
+
+            // check for decision parameter
+            // and correspondingly
+            // update d, x, y
+            if (d > 0)
+            {
+                y--;
+                d = d + 4 * (x - y) + 10;
+            }
+            else
+                d = d + 4 * x + 6;
+            drawCircle(xc, yc, x, y, color);
+            //delay(50);
+        }
+    }
+
+}
+
+uint32_t ST7735_DrawStringV2(uint16_t x, uint16_t y, char *pt, int16_t textColor, int16_t size, int16_t space){
+  uint32_t count = 0;
+  if(y>15) return 0;
+  while(*pt){
+      ST7735_DrawCharS(x*6, y*10, *pt, textColor, ST7735_BLACK, size);
+      //ST7735_DrawCharS(x*6, y*10, *pt, textColor, ST7735_BLACK, 2);
+    pt++;
+    x = x+space;
+    if(x>20) return count;  // number of characters printed
+    count++;
+  }
+  return count;  // number of characters printed
+}
+
 ////////////////////////////////////////////////////////////
 ///                    Rotary Encoder                    ///
 ///////////////////////////////////////////////////////////
+
+
 void TimerA_Capture_Init (void) // set up timer A2.1 capture
 {
     P5->SEL0 |= BIT6; // TA0.CCI2A input capture pin, second function
@@ -115,8 +186,8 @@ void TimerA_Capture_Init (void) // set up timer A2.1 capture
 
 uint8_t RotaryButton()
 {
-    #define pin         P5
-    #define bit         BIT7
+    #define pin         P6
+    #define bit         BIT6
     static int Init = 1;
     if(Init)
     {
