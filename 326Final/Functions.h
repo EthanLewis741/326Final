@@ -90,16 +90,32 @@ void PinInit (void)
     P6->OUT     &=~ BIT6; //Input, Pull Down Resistor
 }
 
+void TimerA_PWM_Init (int PWMperiod, double DutyCycle) // set up pwm for for the trigger
+{
+    P2->DIR |= BIT5 ;                 // P2.5 set TA0.1
+    P2->SEL0 |= BIT5 ;
+    P2->SEL1 &= ~(BIT5 );
+    PWMperiod = PWMperiod*32;
+
+    TIMER_A0->CCR[0] = PWMperiod;            // PWM Period
+    TIMER_A0->CCTL[2] = TIMER_A_CCTLN_OUTMOD_7; // CCR2 reset/set
+    TIMER_A0->CCR[2] = (PWMperiod)*DutyCycle;                 // CCR2 PWM duty cycle
+    TIMER_A0->CTL = TIMER_A_CTL_SSEL__ACLK | // SMCLK
+            TIMER_A_CTL_MC__UP |            // Up mode
+            TIMER_A_CTL_CLR;                // Clear TAR
+}
+
 ////////////////////////////////////////////////////////////
 ///                    LCD Stuff                        ///
 ///////////////////////////////////////////////////////////
-void LCDSel(int LCD)
-{
-    if(LCD == 0) P9->OUT &=~(BIT4|BIT6);
-    else if(LCD == 1){ P9->OUT |= (BIT4); P9->OUT &=~(BIT6);}
-    else if(LCD == 2){ P9->OUT |= (BIT6); P9->OUT &=~(BIT4);}
-    else if(LCD == 3) P9->OUT |=  (BIT4|BIT6);
-}
+
+//void LCDSel(int LCD)
+//{
+//    if(LCD == 0) P9->OUT &=~(BIT4|BIT6);
+//    else if(LCD == 1){ P9->OUT |= (BIT4); P9->OUT &=~(BIT6);}
+//    else if(LCD == 2){ P9->OUT |= (BIT6); P9->OUT &=~(BIT4);}
+//    else if(LCD == 3) P9->OUT |=  (BIT4|BIT6);
+//}
 
 void drawCircle(int xc, int yc, int x, int y, int color)
 {
@@ -149,7 +165,7 @@ uint32_t ST7735_DrawStringV2(uint16_t x, uint16_t y, char *pt, int16_t textColor
   uint32_t count = 0;
   if(y>15) return 0;
   while(*pt){
-      ST7735_DrawCharS(x*6, y*10, *pt, textColor, ST7735_BLACK, size);
+      ST7735_DrawChar(x*6, y*10, *pt, textColor, ST7735_BLACK, size);
       //ST7735_DrawCharS(x*6, y*10, *pt, textColor, ST7735_BLACK, 2);
     pt++;
     x = x+space;
@@ -170,7 +186,7 @@ void TimerA_Capture_Init (void) // set up timer A2.1 capture
     P5->SEL1 &= ~ BIT6; // TA0.CCI2A input capture pin, second function
     P5->DIR &= ~ BIT6;
 
-    TIMER_A2->CTL |= TIMER_A_CTL_TASSEL_2 | // Use SMCLK as clock source,
+    TIMER_A2->CTL |= TIMER_A_CTL_TASSEL_1 | // Use SMCLK as clock source,
     TIMER_A_CTL_MC_2| // Start timer in continuous mode
     TIMER_A_CTL_CLR; // clear TA0R
     //(0x0214)
@@ -203,7 +219,7 @@ uint8_t RotaryButton()
     int shift = log(bit)/log(2);
     static uint16_t State = 0; // Current debounce status
 
-    for(i=0;i<10;i++)
+    for(i=0;i<100;i++)
     {
         State=((State<<1) | (pin ->IN & bit)>> shift | 0xf800);
         if(State==0xfc00)

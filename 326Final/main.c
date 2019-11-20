@@ -14,12 +14,12 @@
 
 #include <msp.h>
 
-unsigned char timeDateToSet[15] = {55, 58, 23, 05, 21, 11, 19, 0}; // Place holder defualt Date
+unsigned char timeDateToSet[15] = {55, 58, 23, 05, 21, 11, 19, 0}; // Place holder default Date
 
 volatile char Sec[2], Min[2], Hour[2], DoW[15], Month[2], Day[2], Year[2];
 volatile char SecOld[2], MinOld[2], HourOld[2], DoWOld[15], MonthOld[2], DayOld[2], YearOld[2];
 
-#define SLAVE_ADDR 0x68 // RTC slave addressb
+#define SLAVE_ADDR 0x68 // RTC slave address
 volatile int CWcount, CCWcount;
 
 volatile int Speed= 70;
@@ -49,7 +49,7 @@ int main(void)
     I2C1_init(); // Initiate the I2C communication for the RTC
 
     TIMER32_1->CONTROL = 0b11100111;
-    //TIMER32_1->LOAD = 3000000;
+    TIMER32_1->LOAD = 3000000;
     NVIC_EnableIRQ( T32_INT1_IRQn );
 
     __enable_irq ( ); // enable global interrupts
@@ -57,38 +57,11 @@ int main(void)
 
 
 
-    //LCDSel(2);
-    //ST7735_DrawStringV2(7,10, "Test"  ,0xFFE0,2,2);
-
-
+    TimerA_PWM_Init(10000,.5);
     while(1)
     {
 
-        //LCDSel(0);
-        //LCDSelect = 3;
-        //ST7735_FillScreen(0xFFFF);
-        SysTick_delay(1000);
-
-        //LCDSel(1);
-        LCDSelect = 1;
-        ST7735_DrawStringV2(3,4, "Test" ,0x001F,2,2);//Print it to the LCD!
-        circleBres(10, 10, 5 ,0x001F);
-        //SysTick_delay(1);
-        //circleBres(10, 20, 5 ,0x001F);
-        SysTick_delay(3000);
-
-        //LCDSel(2);
-        LCDSelect = 2;
-        ST7735_DrawStringV2(3,4, "Test" ,0x001F,2,2);//Print it to the LCD!
-        circleBres(10, 10, 5 ,0x001F);
-        //SysTick_delay(1);
-        //circleBres(10, 20, 5 ,0x001F);
-        SysTick_delay(3000);
-
-//        LCDSel(0);
-//        SysTick_delay(3000);
-        //DateInput();
-
+       // MainMenu();
     }
 
 }
@@ -96,28 +69,57 @@ int main(void)
 
 void MainMenu(void)
 {
-    int State = 0, Flag = 0,r;
+    static int State = 0, Flag = 1;
 
-    if(CWcount)     {State++; (State>2)?State=0:0; CWcount = 0;}
-    if(CCWcount)    {State--; (State<0)?State=2:0; CCWcount = 0;}
+    if(CWcount)     {State++; (State>2)?State=0:0; Flag = 1; CWcount =  0;}
+    if(CCWcount)    {State--; (State<0)?State=2:0; Flag = 1; CCWcount = 0;}
 
-        switch(State){
-        case 0: // Alarm History
-            circleBres(10, 10, 10,ST7735_RED);
-
-        case 1: // Time Set
+        switch(State)
+        {
+        case 0:// Time Set
+            if(RotaryButton())
+            {
+                Output_Clear();
+                DateInput();
+                Flag =1;
+            }
+            break;
+        case 1: // Alarm History
+            break;
 
         case 2: //Alarm Config
-
-
+            if(RotaryButton())
+            {
+                Output_Clear();
+                AlarmConfigMenu();
+                Flag =1;
+            }
+            break;
         }
+
+        if(Flag)
+        {
+            LCDSelect = 1;
+            ST7735_DrawStringV2(3,4, "Time Set" ,(State == 0)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+            circleBres(10, 46, 5,(State == 0)? 0x001F:0x0000);
+            //ST7735_DrawStringV2(3,6, "Set" ,0xFFE0,2,2);//Print it to the LCD!
+
+            ST7735_DrawStringV2(3,7, "Alarm " ,(State == 1)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+            ST7735_DrawStringV2(3,9, "History" ,(State == 1)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+            circleBres(10, 90, 5,(State == 1)? 0x001F:0x0000);
+
+            ST7735_DrawStringV2(3,12, "Alarm" ,(State == 2)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+            ST7735_DrawStringV2(3,14, "Config" ,(State == 2)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+            circleBres(10, 135, 5,(State == 2)? 0x001F:0x0000);
+            Flag = 0;
+        }
+
 
 }
 
 void MeasurmentDisplay1(void)
 {
-    LCDSel(2);
-
+    LCDSelect = 2;
     static int Init = 1;
     if(Init)
     {
@@ -152,7 +154,7 @@ void MeasurmentDisplay1(void)
         ST7735_DrawStringV2(15,8, Year,0xFFE0,2,2);//Print it to the LCD!
 
     //Speed
-    Speed++;
+    //Speed++;
     sprintf(SpeedS,"%03d", Speed);
     if(strcmp(SpeedSOld, SpeedS))
         ST7735_DrawStringV2(2,12, SpeedS ,0xFFE0,2,2);
@@ -167,91 +169,201 @@ void MeasurmentDisplay1(void)
     strcpy(SpeedSOld, SpeedS);
     strcpy(TempSOld, TempS);
 
-    LCDSel(1);
+    LCDSelect = 1;
+}
+
+void MeasurmentDisplay2(void)
+{
+    LCDSelect = 2;
+    static int Init = 1;
+    if(Init)
+    {
+        ST7735_FillRect(64, 110, 2, 70, 0xFFE0);
+        ST7735_FillRect(0, 110, 128, 2, 0xFFE0);
+        ST7735_DrawStringV2(7,4, ":"  ,0xFFE0,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(13,4, ":"  ,0xFFE0,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(7,8, "/"  ,0xFFE0,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(13,8, "/"  ,0xFFE0,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(2,14, "MPH" ,0xFFE0,2,2);
+        ST7735_DrawStringV2(15,14, 167 ,0xFFE0,2,2);
+        ST7735_DrawStringV2(16,14, "F" ,0xFFE0,2,2);
+        Init = 0;
+
+    }
+
+
+    //Time
+    if(strcmp(HourOld, Hour))
+        ST7735_DrawStringV2(3,4, Hour ,0xFFE0,2,2);//Print it to the LCD!
+    if(strcmp(MinOld, Min))
+        ST7735_DrawStringV2(9,4, Min  ,0xFFE0,2,2);//Print it to the LCD!
+    if(strcmp(SecOld, Sec))
+        ST7735_DrawStringV2(15,4, Sec  ,0xFFE0,2,2);//Print it to the LCD!
+    if(strcmp(DoWOld, DoW))
+        ST7735_DrawStringV2(3,6, DoW  ,0xFFE0,2,2);//Print it to the LCD!
+    if(strcmp(MonthOld, Month))
+        ST7735_DrawStringV2(3,8, Month,0xFFE0,2,2);//Print it to the LCD!
+    if(strcmp(DayOld, Day))
+        ST7735_DrawStringV2(9,8, Day ,0xFFE0,2,2);//Print it to the LCD!
+    if(strcmp(YearOld, Year))
+        ST7735_DrawStringV2(15,8, Year,0xFFE0,2,2);//Print it to the LCD!
+
+    //Speed
+    //Speed++;
+    sprintf(SpeedS,"%03d", Speed);
+    if(strcmp(SpeedSOld, SpeedS))
+        ST7735_DrawStringV2(2,12, SpeedS ,0xFFE0,2,2);
+
+
+    //Temp
+    sprintf(TempS,"%03d", Temp);
+    if(strcmp(TempSOld, Temp))
+        ST7735_DrawStringV2(15,12, TempS ,0xFFE0,2,2);
+
+    strcpy(SecOld, Sec); strcpy(HourOld, Hour); strcpy(MinOld, Min); strcpy(DoWOld, DoW); strcpy(MonthOld, Month); strcpy(DayOld, Day); strcpy(YearOld, Year);
+    strcpy(SpeedSOld, SpeedS);
+    strcpy(TempSOld, TempS);
+
+    LCDSelect = 1;
+}
+
+void MeasurmentDisplay3(void)
+{
+    LCDSelect = 2;
+    static int Init = 1;
+    if(Init)
+    {
+        ST7735_FillRect(64, 110, 2, 70, 0xFFE0);
+        ST7735_FillRect(0, 110, 128, 2, 0xFFE0);
+        ST7735_DrawStringV2(7,4, ":"  ,0xFFE0,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(13,4, ":"  ,0xFFE0,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(7,8, "/"  ,0xFFE0,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(13,8, "/"  ,0xFFE0,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(2,14, "MPH" ,0xFFE0,2,2);
+        ST7735_DrawStringV2(15,14, 167 ,0xFFE0,2,2);
+        ST7735_DrawStringV2(16,14, "F" ,0xFFE0,2,2);
+        Init = 0;
+
+    }
+
+
+    //Time
+    if(strcmp(HourOld, Hour))
+        ST7735_DrawStringV2(3,4, Hour ,0xFFE0,2,2);//Print it to the LCD!
+    if(strcmp(MinOld, Min))
+        ST7735_DrawStringV2(9,4, Min  ,0xFFE0,2,2);//Print it to the LCD!
+    if(strcmp(SecOld, Sec))
+        ST7735_DrawStringV2(15,4, Sec  ,0xFFE0,2,2);//Print it to the LCD!
+    if(strcmp(DoWOld, DoW))
+        ST7735_DrawStringV2(3,6, DoW  ,0xFFE0,2,2);//Print it to the LCD!
+    if(strcmp(MonthOld, Month))
+        ST7735_DrawStringV2(3,8, Month,0xFFE0,2,2);//Print it to the LCD!
+    if(strcmp(DayOld, Day))
+        ST7735_DrawStringV2(9,8, Day ,0xFFE0,2,2);//Print it to the LCD!
+    if(strcmp(YearOld, Year))
+        ST7735_DrawStringV2(15,8, Year,0xFFE0,2,2);//Print it to the LCD!
+
+    //Speed
+    //Speed++;
+    sprintf(SpeedS,"%03d", Speed);
+    if(strcmp(SpeedSOld, SpeedS))
+        ST7735_DrawStringV2(2,12, SpeedS ,0xFFE0,2,2);
+
+
+    //Temp
+    sprintf(TempS,"%03d", Temp);
+    if(strcmp(TempSOld, Temp))
+        ST7735_DrawStringV2(15,12, TempS ,0xFFE0,2,2);
+
+    strcpy(SecOld, Sec); strcpy(HourOld, Hour); strcpy(MinOld, Min); strcpy(DoWOld, DoW); strcpy(MonthOld, Month); strcpy(DayOld, Day); strcpy(YearOld, Year);
+    strcpy(SpeedSOld, SpeedS);
+    strcpy(TempSOld, TempS);
+
+    LCDSelect = 1;
 }
 
 void DateInput(void){
-    int State = 0, DoneFlag = 0, Num, i;
+    int State = 0, DoneFlag = 0, Num, i, Flag = 1;
+    Output_Clear();
     //ST7735_FillScreen(0xFFFF);
 
     while(!DoneFlag)
     {
         switch(State){
         case 0: // Seconds
-            if(CWcount) {timeDateToSet[0]++; CWcount = 0;}
-            if(CCWcount) {timeDateToSet[0]--; CCWcount = 0;}
+            if(CWcount) {timeDateToSet[0]++; Flag = 1; CWcount = 0;}
+            if(CCWcount) {timeDateToSet[0]--;  Flag = 1; CCWcount = 0;}
 
             if(timeDateToSet[0]>59)
                 timeDateToSet[0] = 0;
 
-            if(RotaryButton())
-                State++;
+            if(RotaryButton()){ State++; Flag = 1;}
 
             break;
         case 1: // Minutes
-            if(CWcount) {timeDateToSet[1]++; CWcount = 0;}
-            if(CCWcount) {timeDateToSet[1]--; CCWcount = 0;}
+            if(CWcount) {timeDateToSet[1]++;  Flag = 1; CWcount = 0;}
+            if(CCWcount) {timeDateToSet[1]--; Flag = 1; CCWcount = 0;}
 
             if(timeDateToSet[1]>59)
                 timeDateToSet[1] = 0;
 
-            if(RotaryButton())
-                State++;
+            if(RotaryButton()){ State++; Flag = 1;}
+
 
             break;
         case 2: // Hours
-            if(CWcount) {timeDateToSet[2]++; CWcount = 0;}
-            if(CCWcount) {timeDateToSet[2]--; CCWcount = 0;}
+            if(CWcount) {timeDateToSet[2]++; Flag = 1; CWcount = 0;}
+            if(CCWcount) {timeDateToSet[2]--;  Flag = 1;CCWcount = 0;}
 
             if(timeDateToSet[2]>23)
                 timeDateToSet[2] = 0;
 
-            if(RotaryButton())
-                State++;
+            if(RotaryButton()){ State++; Flag = 1;}
 
             break;
         case 3: //Day of Week
-            if(CWcount) {timeDateToSet[3]++; CWcount = 0;}
-            if(CCWcount) {timeDateToSet[3]--; CCWcount = 0;}
+            if(CWcount) {timeDateToSet[3]++; Flag = 1; CWcount = 0;}
+            if(CCWcount) {timeDateToSet[3]--; Flag = 1;  CCWcount = 0;}
 
             if(timeDateToSet[3]>6)
                 timeDateToSet[3] = 0;
 
-            if(RotaryButton())
-                State++;
+            if(RotaryButton()){ State++; Flag = 1;}
 
             break;
         case 4: // Month
-            if(CWcount) {timeDateToSet[5]++; CWcount = 0;}
-            if(CCWcount) {timeDateToSet[5]--; CCWcount = 0;}
+            if(CWcount) {timeDateToSet[5]++; Flag = 1; CWcount = 0;}
+            if(CCWcount) {timeDateToSet[5]--; Flag = 1; CCWcount = 0;}
 
             if(timeDateToSet[5]>12)
                 timeDateToSet[5] = 0;
 
-            if(RotaryButton())
-                State++;
+            if(RotaryButton()){ State++; Flag = 1;}
 
             break;
         case 5: // Day
-            if(CWcount) {timeDateToSet[4]++; CWcount = 0;}
-            if(CCWcount) {timeDateToSet[4]--; CCWcount = 0;}
+            if(CWcount) {timeDateToSet[4]++; Flag = 1; CWcount = 0;}
+            if(CCWcount) {timeDateToSet[4]--; Flag = 1; CCWcount = 0;}
 
             if(timeDateToSet[4]>31)
                 timeDateToSet[4] = 0;
 
-            if(RotaryButton())
-                State++;
+            if(RotaryButton()){ State++; Flag = 1;}
 
             break;
         case 6: // Year
-            if(CWcount) {timeDateToSet[6]++; CWcount = 0;}
-            if(CCWcount) {timeDateToSet[6]--; CCWcount = 0;}
+            if(CWcount) {timeDateToSet[6]++; Flag = 1; CWcount = 0;}
+            if(CCWcount) {timeDateToSet[6]--; Flag = 1;  CCWcount = 0;}
 
             if(timeDateToSet[6]>99)
                 timeDateToSet[6] = 0;
 
             if(RotaryButton())
-                DoneFlag =0;
+            {
+                DoneFlag =1;
+                Output_Clear();
+            }
+
 
             break;
         }
@@ -276,26 +388,95 @@ void DateInput(void){
         sprintf(Day,"%02d",timeDateToSet[4]);
         sprintf(Year,"%02d",timeDateToSet[6]);
 
-        LCDSel(1);
-        ST7735_DrawStringV2(15,6, Sec  ,(State == 0)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
-        ST7735_DrawStringV2(7,6, ":"  ,0xFFE0,2,2);//Print it to the LCD!
-        ST7735_DrawStringV2(9,6, Min  ,(State == 1)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
-        ST7735_DrawStringV2(13,6, ":"  ,0xFFE0,2,2);//Print it to the LCD!
-        ST7735_DrawStringV2(3,6, Hour ,(State == 2)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+        if(Flag)
+        {
+            LCDSelect = 1;
+            ST7735_DrawStringV2(15,6, Sec  ,(State == 0)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+            ST7735_DrawStringV2(7,6, ":"  ,0xFFE0,2,2);//Print it to the LCD!
+            ST7735_DrawStringV2(9,6, Min  ,(State == 1)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+            ST7735_DrawStringV2(13,6, ":"  ,0xFFE0,2,2);//Print it to the LCD!
+            ST7735_DrawStringV2(3,6, Hour ,(State == 2)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
 
-        ST7735_DrawStringV2(3,8, DoW  ,(State == 3)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+            ST7735_DrawStringV2(3,8, DoW  ,(State == 3)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
 
-        ST7735_DrawStringV2(3,10, Month,(State == 4)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
-        ST7735_DrawStringV2(7,10, "/"  ,0xFFE0,2,2);//Print it to the LCD!
-        ST7735_DrawStringV2(9,10, Day ,(State == 5)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
-        ST7735_DrawStringV2(13,10, "/"  ,0xFFE0,2,2);//Print it to the LCD!
-        ST7735_DrawStringV2(15,10, Year,(State == 6)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+            ST7735_DrawStringV2(3,10, Month,(State == 4)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+            ST7735_DrawStringV2(7,10, "/"  ,0xFFE0,2,2);//Print it to the LCD!
+            ST7735_DrawStringV2(9,10, Day ,(State == 5)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+            ST7735_DrawStringV2(13,10, "/"  ,0xFFE0,2,2);//Print it to the LCD!
+            ST7735_DrawStringV2(15,10, Year,(State == 6)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+            Flag =0;
+        }
+
+
         //SysTick_delay(1);
-        //LCDSel(0);
 
     }
 }
 
+void AlarmConfigMenu(void)
+{
+    int DoneFlag = 0, State = 0, Flag = 1;
+    Output_Clear();
+    while(!DoneFlag)
+    {
+        if(CWcount)     {State++; (State>2)?State=0:0; Flag = 1; CWcount =  0;}
+        if(CCWcount)    {State--; (State<0)?State=2:0; Flag = 1; CCWcount = 0;}
+
+            switch(State)
+            {
+            case 0:// Alarm 1 Config
+                if(RotaryButton())
+                {
+                    Output_Clear();
+                    Alarm1Config();
+                    Flag =1;
+                }
+                break;
+            case 1: // Alarm 2 Config
+                if(RotaryButton())
+                {
+                    Output_Clear();
+                    Alarm2Config();
+                    Flag =1;
+                }
+                break;
+
+            case 2: //Done
+                if(RotaryButton())
+                {
+                    Output_Clear();
+                    DoneFlag = 1;
+                }
+                break;
+            }
+
+            if(Flag)
+            {
+                LCDSelect = 1;
+                ST7735_DrawStringV2(3,4, "Alarm 1" ,(State == 0)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+                circleBres(10, 46, 5,(State == 0)? 0x001F:0x0000);
+                //ST7735_DrawStringV2(3,6, "Set" ,0xFFE0,2,2);//Print it to the LCD!
+
+                ST7735_DrawStringV2(3,7, "Alarm 2  " ,(State == 1)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+                circleBres(10, 75, 5,(State == 1)? 0x001F:0x0000);
+
+                ST7735_DrawStringV2(3,12, "Done" ,(State == 2)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+                circleBres(10, 125, 5,(State == 2)? 0x001F:0x0000);
+                Flag = 0;
+            }
+
+    }
+}
+
+void Alarm1Config(void)
+{
+
+}
+
+void Alarm2Config(void)
+{
+
+}
 
 
 ////////////////////////////////////////////////////////////
@@ -303,9 +484,10 @@ void DateInput(void){
 ///////////////////////////////////////////////////////////
 void TA2_N_IRQHandler(void) // Timer A2 interrupt Rotary Encoder
 {
-    __delay_cycles(2000);
-    #define DT (P5->IN & BIT6)>>7
-    #define Clock (P5->IN & BIT6)>>6
+    SysTick_delay(1);
+    //__delay_cycles(200);
+    int DT = (P5->IN & BIT7)>>7 ;
+    int Clock = (P5->IN & BIT6)>>6;
 
     if(DT == Clock)
         CCWcount++;

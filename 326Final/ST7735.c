@@ -506,13 +506,14 @@ uint8_t static writedata(uint8_t c) {
     if(LCDSelect == 1){ P9->OUT |= (BIT4); P9->OUT &=~(BIT6);}
     else if(LCDSelect == 2){ P9->OUT |= (BIT6); P9->OUT &=~(BIT4);}
     else if(LCDSelect == 3) P9->OUT |=  (BIT4|BIT6);
+    int Timeout = 0;
 
     while((EUSCI_A3->IFG&0x0002)==0x0000){};    // wait until EUSCI_A3->TXBUF empty
     DC |= DC_BIT;
     EUSCI_A3->TXBUF = c;                        // data out
-    while((EUSCI_A3->IFG&0x0001)==0x0000){};    // wait until EUSCI_A3->RXBUF full
+    while(((EUSCI_A3->IFG&0x0001)==0x0000) && (Timeout<=10) ){Timeout++; __delay_cycles(100);};    // wait until EUSCI_A3->RXBUF full
 
-    ;
+    P9->OUT &=~(BIT4|BIT6);;
     return EUSCI_A3->RXBUF;                     // return the response
 }
 
