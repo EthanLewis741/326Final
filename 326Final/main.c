@@ -19,13 +19,15 @@ unsigned char timeDateToSet[15] = {55, 58, 23, 05, 21, 11, 19, 0}; // Place hold
 volatile char Sec[2], Min[2], Hour[2], DoW[15], Month[2], Day[2], Year[2];
 volatile char SecOld[2], MinOld[2], HourOld[2], DoWOld[15], MonthOld[2], DayOld[2], YearOld[2];
 
-#define SLAVE_ADDR 0x68 // RTC slave address
-volatile int CWcount, CCWcount;
+volatile int8_t Alarm1[4] = {4,4,4,4}, Alarm2[4];
 
-volatile int Speed= 70;
+#define SLAVE_ADDR 0x68 // RTC slave address
+volatile int8_t CWcount, CCWcount;
+
+volatile uint8_t Speed= 70;
 volatile char SpeedS[3], SpeedSOld[3];
 
-volatile int Temp= 70;
+volatile int8_t Temp= 70;
 volatile char TempS[3], TempSOld[3];
 
 int main(void)
@@ -57,11 +59,11 @@ int main(void)
 
 
 
-    TimerA_PWM_Init(10000,.5);
+    //TimerA_PWM_Init(10000,.5);
     while(1)
     {
-
-       // MainMenu();
+        //Alarm1Config();
+       MainMenu();
     }
 
 }
@@ -470,12 +472,160 @@ void AlarmConfigMenu(void)
 
 void Alarm1Config(void)
 {
+    int DoneFlag = 0, State = 0, Flag = 1;
+    Output_Clear();
+    while(!DoneFlag)
+    {
+            switch(State)
+            {
+                case 0: // First Note
+                    if(CWcount) {Alarm1[State]++; Flag = 1; CWcount = 0;}
+                    if(CCWcount) {Alarm1[State]--;  Flag = 1; CCWcount = 0;}
 
+                    if(Alarm1[State]>8) Alarm1[State] = 8;
+                    if(Alarm1[State]<0) Alarm1[State] = 0;
+
+                    if(RotaryButton()){ State++; Flag = 1;}
+
+                    break;
+                case 1: // Second
+                    if(CWcount) {Alarm1[State]++; Flag = 1; CWcount = 0;}
+                    if(CCWcount) {Alarm1[State]--;  Flag = 1; CCWcount = 0;}
+
+                    if(Alarm1[State]>8) Alarm1[State] = 8;
+                    if(Alarm1[State]<0) Alarm1[State] = 0;
+
+                    if(RotaryButton()){ State++; Flag = 1;}
+
+
+                    break;
+                case 2: // Third
+                    if(CWcount) {Alarm1[State]++; Flag = 1; CWcount = 0;}
+                    if(CCWcount) {Alarm1[State]--;  Flag = 1; CCWcount = 0;}
+
+                    if(Alarm1[State]>8) Alarm1[State] = 8;
+                    if(Alarm1[State]<0) Alarm1[State] = 0;
+
+                    if(RotaryButton()){ State++; Flag = 1;}
+
+                    break;
+                case 3: //Fourth
+                    if(CWcount) {Alarm1[State]++; Flag = 1; CWcount = 0;}
+                    if(CCWcount) {Alarm1[State]--;  Flag = 1; CCWcount = 0;}
+
+                    if(Alarm1[State]>8) Alarm1[State] = 8;
+                    if(Alarm1[State]<0) Alarm1[State] = 0;
+
+                    if(RotaryButton()){ DoneFlag=1; Flag = 1;}
+
+                    break;
+            }
+
+
+
+            if(Flag)
+            {
+                LCDSelect = 1;
+                ST7735_DrawStringV2(3,14, "1" ,(State == 0)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+                ST7735_FillRect(21, 55, 4, 80, 0);
+                ST7735_FillRect(21, (135-Alarm1[0]*10), 4, Alarm1[0]*10, (State == 0)? 0x001F:0xFFE0);
+
+                ST7735_DrawStringV2(8,14, "2" ,(State == 1)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+                ST7735_FillRect(50, 55, 4, 80, 0);
+                ST7735_FillRect(50, (135-Alarm1[1]*10), 4, Alarm1[1]*10, (State == 1)? 0x001F:0xFFE0);
+
+                ST7735_DrawStringV2(12,14, "3" ,(State == 2)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+                ST7735_FillRect(75, 55, 4, 80, 0);
+                ST7735_FillRect(75, (135-Alarm1[2]*10), 4, Alarm1[2]*10, (State == 2)? 0x001F:0xFFE0);
+
+                ST7735_DrawStringV2(16,14, "4" ,(State == 3)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+                ST7735_FillRect(100, 55, 4, 80, 0);
+                ST7735_FillRect(100, (135-Alarm1[3]*10), 4, Alarm1[3]*10, (State == 3)? 0x001F:0xFFE0);
+
+                Flag = 0;
+            }
+
+    }
+    Output_Clear();
 }
 
 void Alarm2Config(void)
 {
+    int DoneFlag = 0, State = 0, Flag = 1;
+    Output_Clear();
+    while(!DoneFlag)
+    {
+            switch(State)
+            {
+                case 0: // First Note
+                    if(CWcount) {Alarm2[State]++; Flag = 1; CWcount = 0;}
+                    if(CCWcount) {Alarm2[State]--;  Flag = 1; CCWcount = 0;}
 
+                    if(Alarm2[State]>8) Alarm2[State] = 8;
+                    if(Alarm2[State]<0) Alarm2[State] = 0;
+
+                    if(RotaryButton()){ State++; Flag = 1;}
+
+                    break;
+                case 1: // Second
+                    if(CWcount) {Alarm2[State]++; Flag = 1; CWcount = 0;}
+                    if(CCWcount) {Alarm2[State]--;  Flag = 1; CCWcount = 0;}
+
+                    if(Alarm2[State]>8) Alarm2[State] = 8;
+                    if(Alarm2[State]<0) Alarm2[State] = 0;
+
+                    if(RotaryButton()){ State++; Flag = 1;}
+
+
+                    break;
+                case 2: // Third
+                    if(CWcount) {Alarm2[State]++; Flag = 1; CWcount = 0;}
+                    if(CCWcount) {Alarm2[State]--;  Flag = 1; CCWcount = 0;}
+
+                    if(Alarm2[State]>8) Alarm2[State] = 8;
+                    if(Alarm2[State]<0) Alarm2[State] = 0;
+
+                    if(RotaryButton()){ State++; Flag = 1;}
+
+                    break;
+                case 3: //Fourth
+                    if(CWcount) {Alarm2[State]++; Flag = 1; CWcount = 0;}
+                    if(CCWcount) {Alarm2[State]--;  Flag = 1; CCWcount = 0;}
+
+                    if(Alarm2[State]>8) Alarm2[State] = 8;
+                    if(Alarm2[State]<0) Alarm2[State] = 0;
+
+                    if(RotaryButton()){ DoneFlag=1; Flag = 1; }
+
+                    break;
+            }
+
+
+
+            if(Flag)
+            {
+                LCDSelect = 1;
+                ST7735_DrawStringV2(3,14, "1" ,(State == 0)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+                ST7735_FillRect(21, 55, 4, 80, 0);
+                ST7735_FillRect(21, (135-Alarm2[0]*10), 4, Alarm2[0]*10, (State == 0)? 0x001F:0xFFE0);
+
+                ST7735_DrawStringV2(8,14, "2" ,(State == 1)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+                ST7735_FillRect(50, 55, 4, 80, 0);
+                ST7735_FillRect(50, (135-Alarm2[1]*10), 4, Alarm2[1]*10, (State == 1)? 0x001F:0xFFE0);
+
+                ST7735_DrawStringV2(12,14, "3" ,(State == 2)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+                ST7735_FillRect(75, 55, 4, 80, 0);
+                ST7735_FillRect(75, (135-Alarm2[2]*10), 4, Alarm2[2]*10, (State == 2)? 0x001F:0xFFE0);
+
+                ST7735_DrawStringV2(16,14, "4" ,(State == 3)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+                ST7735_FillRect(100, 55, 4, 80, 0);
+                ST7735_FillRect(100, (135-Alarm2[3]*10), 4, Alarm2[3]*10, (State == 3)? 0x001F:0xFFE0);
+
+                Flag = 0;
+            }
+
+    }
+    Output_Clear();
 }
 
 
@@ -487,7 +637,7 @@ void TA2_N_IRQHandler(void) // Timer A2 interrupt Rotary Encoder
     SysTick_delay(1);
     //__delay_cycles(200);
     int DT = (P5->IN & BIT7)>>7 ;
-    int Clock = (P5->IN & BIT6)>>6;
+    int Clock = (P3->IN & BIT0)>>0;
 
     if(DT == Clock)
         CCWcount++;
@@ -497,7 +647,7 @@ void TA2_N_IRQHandler(void) // Timer A2 interrupt Rotary Encoder
 //    __delay_cycles(20);
     SysTick_delay(10);
 
-    TIMER_A2->CCTL[1] &= ~(TIMER_A_CCTLN_CCIFG); // Clear the interrupt flag
+    TIMER_A2->CCTL[2] &= ~(TIMER_A_CCTLN_CCIFG); // Clear the interrupt flag
 }
 
 void T32_INT1_IRQHandler ( )                             //Interrupt Handler for Timer32 1.

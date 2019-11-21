@@ -182,15 +182,22 @@ uint32_t ST7735_DrawStringV2(uint16_t x, uint16_t y, char *pt, int16_t textColor
 
 void TimerA_Capture_Init (void) // set up timer A2.1 capture
 {
-    P5->SEL0 |= BIT6; // TA0.CCI2A input capture pin, second function
-    P5->SEL1 &= ~ BIT6; // TA0.CCI2A input capture pin, second function
-    P5->DIR &= ~ BIT6;
+    P5->SEL0 |= BIT7; // TA0.CCI2A input capture pin, second function
+    P5->SEL1 &= ~ BIT7; // TA0.CCI2A input capture pin, second function
+    P5->DIR &= ~ BIT7;
+
+
+    P3->SEL0    &=~ BIT0;
+    P3->SEL1    &=~ BIT0;
+    P3->DIR     &=~ BIT0;
+    P3->REN     |=  BIT0;
+    P3->OUT     &=~ BIT0; //Input, Pull Down Resistor
 
     TIMER_A2->CTL |= TIMER_A_CTL_TASSEL_1 | // Use SMCLK as clock source,
     TIMER_A_CTL_MC_2| // Start timer in continuous mode
     TIMER_A_CTL_CLR; // clear TA0R
     //(0x0214)
-    TIMER_A2->CCTL[1] |= TIMER_A_CCTLN_CM_3 | // Capture rising and falling edge,
+    TIMER_A2->CCTL[2] |= TIMER_A_CCTLN_CM_3 | // Capture rising and falling edge,
     TIMER_A_CCTLN_CCIS_0 | // Use CCI2A
     TIMER_A_CCTLN_CCIE | // Enable capture interrupt
     TIMER_A_CCTLN_CAP | // Enable capture mode,
