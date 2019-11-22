@@ -32,7 +32,7 @@ volatile char SpeedS[3], SpeedSOld[3];
 volatile int Temp= 70;
 volatile char TempS[4], TempSOld[4];
 
-int8_t MeasureScreenCount;
+int8_t MeasureScreenCount = 1;
 int8_t Reset = 1;
 
 int main(void)
@@ -50,7 +50,7 @@ int main(void)
     ClockInit();// Setting MCLK to 48MHz for faster programming
     ST7735_InitR(INITR_BLACKTAB); // Initiate the LCD
     TimerA_Capture_Init();
-    //PinInit();
+    PinInit();
 
 
     I2C1_init(); // Initiate the I2C communication for the RTC
@@ -59,8 +59,8 @@ int main(void)
     TIMER32_1->CONTROL = 0b11100111;
     TIMER32_1->LOAD = 3000000;
 
-    //NVIC_EnableIRQ(PORT1_IRQn);
-    //NVIC_SetPriority(PORT1_IRQn, 10);
+    NVIC_EnableIRQ(PORT1_IRQn);
+    NVIC_SetPriority(PORT1_IRQn, 10);
 
     NVIC_EnableIRQ( T32_INT1_IRQn );
     NVIC_SetPriority(T32_INT1_IRQn, 20);
@@ -80,6 +80,7 @@ int main(void)
     while(1)
     {
         //Alarm1Config();
+        //MeasurmentDisplay2();
        MainMenu();
     }
 
@@ -150,46 +151,44 @@ void MeasurmentDisplay1(void)
         ST7735_DrawStringV2(7,8, "/"  ,0xFFE0,2,2);//Print it to the LCD!
         ST7735_DrawStringV2(13,8, "/"  ,0xFFE0,2,2);//Print it to the LCD!
         ST7735_DrawStringV2(2,14, "MPH" ,0xFFE0,2,2);
-        ST7735_DrawStringV2(15,14, 167 ,0xFFE0,2,2);
+        ST7735_DrawStringV2(15,14, "o" ,0xFFE0,1,1);
         ST7735_DrawStringV2(16,14, "F" ,0xFFE0,2,2);
-        Reset = 0;
 
     }
 
 
     //Time
-    if(strcmp(HourOld, Hour))
+    if(strcmp(HourOld, Hour) || Reset)
         ST7735_DrawStringV2(3,4, Hour ,0xFFE0,2,2);//Print it to the LCD!
-    if(strcmp(MinOld, Min))
+    if(strcmp(MinOld, Min) || Reset)
         ST7735_DrawStringV2(9,4, Min  ,0xFFE0,2,2);//Print it to the LCD!
-    if(strcmp(SecOld, Sec))
+    if(strcmp(SecOld, Sec) || Reset)
         ST7735_DrawStringV2(15,4, Sec  ,0xFFE0,2,2);//Print it to the LCD!
-    if(strcmp(DoWOld, DoW))
+    if(strcmp(DoWOld, DoW) || Reset)
         ST7735_DrawStringV2(3,6, DoW  ,0xFFE0,2,2);//Print it to the LCD!
-    if(strcmp(MonthOld, Month))
+    if(strcmp(MonthOld, Month) || Reset)
         ST7735_DrawStringV2(3,8, Month,0xFFE0,2,2);//Print it to the LCD!
-    if(strcmp(DayOld, Day))
+    if(strcmp(DayOld, Day) || Reset)
         ST7735_DrawStringV2(9,8, Day ,0xFFE0,2,2);//Print it to the LCD!
-    if(strcmp(YearOld, Year))
+    if(strcmp(YearOld, Year) || Reset)
         ST7735_DrawStringV2(15,8, Year,0xFFE0,2,2);//Print it to the LCD!
 
     //Speed
     //Speed++;
     sprintf(SpeedS,"%03d", Speed);
-    if(strcmp(SpeedSOld, SpeedS))
+    if(strcmp(SpeedSOld, SpeedS) || Reset)
         ST7735_DrawStringV2(2,12, SpeedS ,0xFFE0,2,2);
 
 
     //Temp
     sprintf(TempS,"%03d", Temp);
-    if(strcmp(TempSOld, TempS))
+    if(strcmp(TempSOld, TempS)|| Reset)
         ST7735_DrawStringV2(13,12, TempS ,0xFFE0,2,2);
 
-    strcpy(SecOld, Sec); strcpy(HourOld, Hour); strcpy(MinOld, Min); strcpy(DoWOld, DoW); strcpy(MonthOld, Month); strcpy(DayOld, Day); strcpy(YearOld, Year);
-    strcpy(SpeedSOld, SpeedS);
-    strcpy(TempSOld, TempS);
 
     LCDSelect = 1;
+    Reset = 0;
+
 }
 
 void MeasurmentDisplay2(void)
@@ -199,53 +198,43 @@ void MeasurmentDisplay2(void)
     if(Reset)
     {
         Output_Clear();
-        ST7735_FillRect(64, 110, 2, 70, 0xFFE0);
+        ST7735_FillRect(63, 110, 2, 70, 0xFFE0);
         ST7735_FillRect(0, 110, 128, 2, 0xFFE0);
-        ST7735_DrawStringV2(7,4, ":"  ,0xFFE0,2,2);//Print it to the LCD!
-        ST7735_DrawStringV2(13,4, ":"  ,0xFFE0,2,2);//Print it to the LCD!
-        ST7735_DrawStringV2(7,8, "/"  ,0xFFE0,2,2);//Print it to the LCD!
-        ST7735_DrawStringV2(13,8, "/"  ,0xFFE0,2,2);//Print it to the LCD!
-        ST7735_DrawStringV2(2,14, "MPH" ,0xFFE0,2,2);
-        ST7735_DrawStringV2(15,14, 167 ,0xFFE0,2,2);
-        ST7735_DrawStringV2(16,14, "2" ,0xFFE0,2,2);
-        Reset = 0;
+        ST7735_DrawStringV2(15,12, ":"  ,0xFFE0,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(13,14, ":"  ,0xFFE0,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(6,8, "MPH" ,0xFFE0,3,3);
+        ST7735_DrawStringV2(4,14, "o" ,0xFFE0,1,1);
+        ST7735_DrawStringV2(5,14, "F" ,0xFFE0,2,2);
+
 
     }
 
 
     //Time
-    if(strcmp(HourOld, Hour))
-        ST7735_DrawStringV2(3,4, Hour ,0xFFE0,2,2);//Print it to the LCD!
-    if(strcmp(MinOld, Min))
-        ST7735_DrawStringV2(9,4, Min  ,0xFFE0,2,2);//Print it to the LCD!
-    if(strcmp(SecOld, Sec))
-        ST7735_DrawStringV2(15,4, Sec  ,0xFFE0,2,2);//Print it to the LCD!
-    if(strcmp(DoWOld, DoW))
-        ST7735_DrawStringV2(3,6, DoW  ,0xFFE0,2,2);//Print it to the LCD!
-    if(strcmp(MonthOld, Month))
-        ST7735_DrawStringV2(3,8, Month,0xFFE0,2,2);//Print it to the LCD!
-    if(strcmp(DayOld, Day))
-        ST7735_DrawStringV2(9,8, Day ,0xFFE0,2,2);//Print it to the LCD!
-    if(strcmp(YearOld, Year))
-        ST7735_DrawStringV2(15,8, Year,0xFFE0,2,2);//Print it to the LCD!
+    if(strcmp(HourOld, Hour) || Reset)
+        ST7735_DrawStringV2(11,12, Hour ,0xFFE0,2,2);//Print it to the LCD!
+    if(strcmp(MinOld, Min) || Reset)
+        ST7735_DrawStringV2(17,12, Min  ,0xFFE0,2,2);//Print it to the LCD!
+    if(strcmp(SecOld, Sec) || Reset)
+        ST7735_DrawStringV2(15,14, Sec  ,0xFFE0,2,2);//Print it to the LCD!
+
 
     //Speed
     //Speed++;
     sprintf(SpeedS,"%03d", Speed);
-    if(strcmp(SpeedSOld, SpeedS))
-        ST7735_DrawStringV2(2,12, SpeedS ,0xFFE0,2,2);
+    if(strcmp(SpeedSOld, SpeedS) || Reset)
+        ST7735_DrawStringV2(6,5, SpeedS ,0xFFE0,3,3);
 
 
     //Temp
     sprintf(TempS,"%03d", Temp);
-    if(strcmp(TempSOld, TempS))
-        ST7735_DrawStringV2(13,12, TempS ,0xFFE0,2,2);
+    if(strcmp(TempSOld, TempS)|| Reset)
+        ST7735_DrawStringV2(2,12, TempS ,0xFFE0,2,2);
 
-    strcpy(SecOld, Sec); strcpy(HourOld, Hour); strcpy(MinOld, Min); strcpy(DoWOld, DoW); strcpy(MonthOld, Month); strcpy(DayOld, Day); strcpy(YearOld, Year);
-    strcpy(SpeedSOld, SpeedS);
-    strcpy(TempSOld, TempS);
+
 
     LCDSelect = 1;
+    Reset = 0;
 }
 
 void MeasurmentDisplay3(void)
@@ -264,37 +253,37 @@ void MeasurmentDisplay3(void)
         ST7735_DrawStringV2(2,14, "MPH" ,0xFFE0,2,2);
         ST7735_DrawStringV2(15,14, 167 ,0xFFE0,2,2);
         ST7735_DrawStringV2(16,14, "3" ,0xFFE0,2,2);
-        Reset = 0;
+
 
     }
 
 
     //Time
-    if(strcmp(HourOld, Hour))
+    if(strcmp(HourOld, Hour) || Reset)
         ST7735_DrawStringV2(3,4, Hour ,0xFFE0,2,2);//Print it to the LCD!
-    if(strcmp(MinOld, Min))
+    if(strcmp(MinOld, Min) || Reset)
         ST7735_DrawStringV2(9,4, Min  ,0xFFE0,2,2);//Print it to the LCD!
-    if(strcmp(SecOld, Sec))
+    if(strcmp(SecOld, Sec) || Reset)
         ST7735_DrawStringV2(15,4, Sec  ,0xFFE0,2,2);//Print it to the LCD!
-    if(strcmp(DoWOld, DoW))
+    if(strcmp(DoWOld, DoW) || Reset)
         ST7735_DrawStringV2(3,6, DoW  ,0xFFE0,2,2);//Print it to the LCD!
-    if(strcmp(MonthOld, Month))
+    if(strcmp(MonthOld, Month) || Reset)
         ST7735_DrawStringV2(3,8, Month,0xFFE0,2,2);//Print it to the LCD!
-    if(strcmp(DayOld, Day))
+    if(strcmp(DayOld, Day) || Reset)
         ST7735_DrawStringV2(9,8, Day ,0xFFE0,2,2);//Print it to the LCD!
-    if(strcmp(YearOld, Year))
+    if(strcmp(YearOld, Year) || Reset)
         ST7735_DrawStringV2(15,8, Year,0xFFE0,2,2);//Print it to the LCD!
 
     //Speed
     //Speed++;
     sprintf(SpeedS,"%03d", Speed);
-    if(strcmp(SpeedSOld, SpeedS))
+    if(strcmp(SpeedSOld, SpeedS) || Reset)
         ST7735_DrawStringV2(2,12, SpeedS ,0xFFE0,2,2);
 
 
     //Temp
     sprintf(TempS,"%03d", Temp);
-    if(strcmp(TempSOld, TempS))
+    if(strcmp(TempSOld, TempS)|| Reset)
         ST7735_DrawStringV2(13,12, TempS ,0xFFE0,2,2);
 
     strcpy(SecOld, Sec); strcpy(HourOld, Hour); strcpy(MinOld, Min); strcpy(DoWOld, DoW); strcpy(MonthOld, Month); strcpy(DayOld, Day); strcpy(YearOld, Year);
@@ -302,6 +291,7 @@ void MeasurmentDisplay3(void)
     strcpy(TempSOld, TempS);
 
     LCDSelect = 1;
+    Reset = 0;
 }
 
 void DateInput(void){
@@ -676,7 +666,7 @@ void TA2_N_IRQHandler(void) // Timer A2 interrupt Rotary Encoder
     TIMER_A2->CCTL[2] &= ~(TIMER_A_CCTLN_CCIFG); // Clear the interrupt flag
 }
 
-void T32_INT1_IRQHandler ( )                             //Interrupt Handler for Timer32 1.
+void T32_INT1_IRQHandler (void)                             //Interrupt Handler for Timer32 1.
 {
     TIMER32_1->INTCLR = 1;  //Clear interrupt flag so it does not interrupt again immediately.
     I2C1_burstRead(SLAVE_ADDR, 0, 7, timeDateReadback);
@@ -705,18 +695,23 @@ void T32_INT1_IRQHandler ( )                             //Interrupt Handler for
     (MeasureScreenCount==1)? MeasurmentDisplay2():
     (MeasureScreenCount==2)? MeasurmentDisplay3():0;
 
+    strcpy(SecOld, Sec); strcpy(HourOld, Hour); strcpy(MinOld, Min); strcpy(DoWOld, DoW); strcpy(MonthOld, Month); strcpy(DayOld, Day); strcpy(YearOld, Year);
+    strcpy(SpeedSOld, SpeedS);
+    strcpy(TempSOld, TempS);
+
     TIMER32_1->LOAD = 3000000;
 }
 
-//void PORT1_IRQHandler(void)
-//{
-//    //DebounceSwitch1();
-//    MeasureScreenCount = ((MeasureScreenCount+1)%3);
-//    Reset = 1;
-//    P1->IFG = 0; //Clear all flags
-//    TIMER32_1->LOAD = 10;
-//
-//}
+void PORT1_IRQHandler(void)
+{
+    //DebounceSwitch1();
+    MeasureScreenCount++;
+    (MeasureScreenCount>2)?MeasureScreenCount = 0:0;
+    Reset = 1;
+    P1->IFG = 0; //Clear all flags
+    TIMER32_1->LOAD = 10;
+
+}
 
 
 
