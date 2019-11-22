@@ -98,7 +98,7 @@
 uint32_t StX=0; // position along the horizonal axis 0 to 20
 uint32_t StY=0; // position along the vertical axis 0 to 15
 uint16_t StTextColor = ST7735_YELLOW;
-int LCDSelect;
+int8_t LCDSelect;
 
 #define ST7735_NOP     0x00
 #define ST7735_SWRESET 0x01
@@ -483,6 +483,7 @@ static int16_t _height = ST7735_TFTHEIGHT;
 // Outputs: 8-bit reply
 // Assumes: UCA3 and Port 9 have already been initialized and enabled
 uint8_t static writecommand(uint8_t c) {
+    __disable_interrupts();
     if(LCDSelect == 1){ P9->OUT |= (BIT4); P9->OUT &=~(BIT6);}
     else if(LCDSelect == 2){ P9->OUT |= (BIT6); P9->OUT &=~(BIT4);}
     else if(LCDSelect == 3) P9->OUT |=  (BIT4|BIT6);
@@ -493,6 +494,7 @@ uint8_t static writecommand(uint8_t c) {
     while((EUSCI_A3->IFG&0x0001)==0x0000){};    // wait until EUSCI_A3->RXBUF full
 
     P9->OUT &=~(BIT4|BIT6);
+    __enable_interrupts();
     return EUSCI_A3->RXBUF;                     // return the response
 }
 
@@ -503,6 +505,7 @@ uint8_t static writecommand(uint8_t c) {
 // Assumes: UCA3 and Port 9 have already been initialized and enabled
 uint8_t static writedata(uint8_t c) {
 
+    __disable_interrupts();
     if(LCDSelect == 1){ P9->OUT |= (BIT4); P9->OUT &=~(BIT6);}
     else if(LCDSelect == 2){ P9->OUT |= (BIT6); P9->OUT &=~(BIT4);}
     else if(LCDSelect == 3) P9->OUT |=  (BIT4|BIT6);
@@ -513,7 +516,9 @@ uint8_t static writedata(uint8_t c) {
     EUSCI_A3->TXBUF = c;                        // data out
     while(((EUSCI_A3->IFG&0x0001)==0x0000) && (Timeout<=10) ){Timeout++; __delay_cycles(100);};    // wait until EUSCI_A3->RXBUF full
 
-    P9->OUT &=~(BIT4|BIT6);;
+    P9->OUT &=~(BIT4|BIT6);
+    __enable_interrupts();
+    uint8_t data = EUSCI_A3->RXBUF;
     return EUSCI_A3->RXBUF;                     // return the response
 }
 
@@ -750,7 +755,7 @@ void static commonInit(const uint8_t *cmdList) {
   // set the baud rate for the eUSCI which gets its clock from SMCLK
   // Clock_Init48MHz() from ClockSystem.c sets SMCLK = HFXTCLK/4 = 12 MHz
   // if the SMCLK is set to 12 MHz, divide by 3 for 4 MHz baud clock
-  EUSCI_A3->BRW = 3;
+  //EUSCI_A3->BRW = 3;
   // modulation is not used in SPI mode, so clear EUSCI_A3->MCTLW
   EUSCI_A3->MCTLW = 0;
   P9->SEL0 |= 0b10100000;

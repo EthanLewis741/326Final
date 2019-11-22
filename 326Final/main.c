@@ -15,11 +15,13 @@
 #include <msp.h>
 
 unsigned char timeDateToSet[15] = {55, 58, 23, 05, 21, 11, 19, 0}; // Place holder default Date
+unsigned char timeDateReadback[7];
+unsigned char TempReadback[2];
 
 volatile char Sec[2], Min[2], Hour[2], DoW[15], Month[2], Day[2], Year[2];
 volatile char SecOld[2], MinOld[2], HourOld[2], DoWOld[15], MonthOld[2], DayOld[2], YearOld[2];
 
-volatile int8_t Alarm1[4] = {4,4,4,4}, Alarm2[4];
+volatile int8_t Alarm1[4] = {4,4,4,4}, Alarm2[4] = {4,4,4,4};
 
 #define SLAVE_ADDR 0x68 // RTC slave address
 volatile int8_t CWcount, CCWcount;
@@ -27,8 +29,11 @@ volatile int8_t CWcount, CCWcount;
 volatile uint8_t Speed= 70;
 volatile char SpeedS[3], SpeedSOld[3];
 
-volatile int8_t Temp= 70;
-volatile char TempS[3], TempSOld[3];
+volatile int Temp= 70;
+volatile char TempS[4], TempSOld[4];
+
+int8_t MeasureScreenCount;
+int8_t Reset = 1;
 
 int main(void)
 {
@@ -45,14 +50,20 @@ int main(void)
     ClockInit();// Setting MCLK to 48MHz for faster programming
     ST7735_InitR(INITR_BLACKTAB); // Initiate the LCD
     TimerA_Capture_Init();
-    PinInit();
+    //PinInit();
 
 
     I2C1_init(); // Initiate the I2C communication for the RTC
 
+
     TIMER32_1->CONTROL = 0b11100111;
     TIMER32_1->LOAD = 3000000;
+
+    //NVIC_EnableIRQ(PORT1_IRQn);
+    //NVIC_SetPriority(PORT1_IRQn, 10);
+
     NVIC_EnableIRQ( T32_INT1_IRQn );
+    NVIC_SetPriority(T32_INT1_IRQn, 20);
 
     __enable_irq ( ); // enable global interrupts
 
@@ -60,6 +71,12 @@ int main(void)
 
 
     //TimerA_PWM_Init(10000,.5);
+    int8_t i;
+    unsigned char timeDateToSetHEX[15]; // Place holder default Date
+    for (i=0; i<15; i++)
+        timeDateToSetHEX[i]=((timeDateToSet[i]/10)*16)+(timeDateToSet[i]%10);
+    I2C1_burstWrite(SLAVE_ADDR, 0, 7, timeDateToSetHEX);
+
     while(1)
     {
         //Alarm1Config();
@@ -71,7 +88,7 @@ int main(void)
 
 void MainMenu(void)
 {
-    static int State = 0, Flag = 1;
+    static int8_t State = 0, Flag = 1;
 
     if(CWcount)     {State++; (State>2)?State=0:0; Flag = 1; CWcount =  0;}
     if(CCWcount)    {State--; (State<0)?State=2:0; Flag = 1; CCWcount = 0;}
@@ -122,9 +139,10 @@ void MainMenu(void)
 void MeasurmentDisplay1(void)
 {
     LCDSelect = 2;
-    static int Init = 1;
-    if(Init)
+
+    if(Reset)
     {
+        Output_Clear();
         ST7735_FillRect(64, 110, 2, 70, 0xFFE0);
         ST7735_FillRect(0, 110, 128, 2, 0xFFE0);
         ST7735_DrawStringV2(7,4, ":"  ,0xFFE0,2,2);//Print it to the LCD!
@@ -134,7 +152,7 @@ void MeasurmentDisplay1(void)
         ST7735_DrawStringV2(2,14, "MPH" ,0xFFE0,2,2);
         ST7735_DrawStringV2(15,14, 167 ,0xFFE0,2,2);
         ST7735_DrawStringV2(16,14, "F" ,0xFFE0,2,2);
-        Init = 0;
+        Reset = 0;
 
     }
 
@@ -164,8 +182,8 @@ void MeasurmentDisplay1(void)
 
     //Temp
     sprintf(TempS,"%03d", Temp);
-    if(strcmp(TempSOld, Temp))
-        ST7735_DrawStringV2(15,12, TempS ,0xFFE0,2,2);
+    if(strcmp(TempSOld, TempS))
+        ST7735_DrawStringV2(13,12, TempS ,0xFFE0,2,2);
 
     strcpy(SecOld, Sec); strcpy(HourOld, Hour); strcpy(MinOld, Min); strcpy(DoWOld, DoW); strcpy(MonthOld, Month); strcpy(DayOld, Day); strcpy(YearOld, Year);
     strcpy(SpeedSOld, SpeedS);
@@ -177,9 +195,10 @@ void MeasurmentDisplay1(void)
 void MeasurmentDisplay2(void)
 {
     LCDSelect = 2;
-    static int Init = 1;
-    if(Init)
+
+    if(Reset)
     {
+        Output_Clear();
         ST7735_FillRect(64, 110, 2, 70, 0xFFE0);
         ST7735_FillRect(0, 110, 128, 2, 0xFFE0);
         ST7735_DrawStringV2(7,4, ":"  ,0xFFE0,2,2);//Print it to the LCD!
@@ -188,8 +207,8 @@ void MeasurmentDisplay2(void)
         ST7735_DrawStringV2(13,8, "/"  ,0xFFE0,2,2);//Print it to the LCD!
         ST7735_DrawStringV2(2,14, "MPH" ,0xFFE0,2,2);
         ST7735_DrawStringV2(15,14, 167 ,0xFFE0,2,2);
-        ST7735_DrawStringV2(16,14, "F" ,0xFFE0,2,2);
-        Init = 0;
+        ST7735_DrawStringV2(16,14, "2" ,0xFFE0,2,2);
+        Reset = 0;
 
     }
 
@@ -219,8 +238,8 @@ void MeasurmentDisplay2(void)
 
     //Temp
     sprintf(TempS,"%03d", Temp);
-    if(strcmp(TempSOld, Temp))
-        ST7735_DrawStringV2(15,12, TempS ,0xFFE0,2,2);
+    if(strcmp(TempSOld, TempS))
+        ST7735_DrawStringV2(13,12, TempS ,0xFFE0,2,2);
 
     strcpy(SecOld, Sec); strcpy(HourOld, Hour); strcpy(MinOld, Min); strcpy(DoWOld, DoW); strcpy(MonthOld, Month); strcpy(DayOld, Day); strcpy(YearOld, Year);
     strcpy(SpeedSOld, SpeedS);
@@ -232,9 +251,10 @@ void MeasurmentDisplay2(void)
 void MeasurmentDisplay3(void)
 {
     LCDSelect = 2;
-    static int Init = 1;
-    if(Init)
+
+    if(Reset)
     {
+        Output_Clear();
         ST7735_FillRect(64, 110, 2, 70, 0xFFE0);
         ST7735_FillRect(0, 110, 128, 2, 0xFFE0);
         ST7735_DrawStringV2(7,4, ":"  ,0xFFE0,2,2);//Print it to the LCD!
@@ -243,8 +263,8 @@ void MeasurmentDisplay3(void)
         ST7735_DrawStringV2(13,8, "/"  ,0xFFE0,2,2);//Print it to the LCD!
         ST7735_DrawStringV2(2,14, "MPH" ,0xFFE0,2,2);
         ST7735_DrawStringV2(15,14, 167 ,0xFFE0,2,2);
-        ST7735_DrawStringV2(16,14, "F" ,0xFFE0,2,2);
-        Init = 0;
+        ST7735_DrawStringV2(16,14, "3" ,0xFFE0,2,2);
+        Reset = 0;
 
     }
 
@@ -274,8 +294,8 @@ void MeasurmentDisplay3(void)
 
     //Temp
     sprintf(TempS,"%03d", Temp);
-    if(strcmp(TempSOld, Temp))
-        ST7735_DrawStringV2(15,12, TempS ,0xFFE0,2,2);
+    if(strcmp(TempSOld, TempS))
+        ST7735_DrawStringV2(13,12, TempS ,0xFFE0,2,2);
 
     strcpy(SecOld, Sec); strcpy(HourOld, Hour); strcpy(MinOld, Min); strcpy(DoWOld, DoW); strcpy(MonthOld, Month); strcpy(DayOld, Day); strcpy(YearOld, Year);
     strcpy(SpeedSOld, SpeedS);
@@ -285,7 +305,7 @@ void MeasurmentDisplay3(void)
 }
 
 void DateInput(void){
-    int State = 0, DoneFlag = 0, Num, i, Flag = 1;
+    int8_t State = 0, DoneFlag = 0, Flag = 1;
     Output_Clear();
     //ST7735_FillScreen(0xFFFF);
 
@@ -413,11 +433,17 @@ void DateInput(void){
         //SysTick_delay(1);
 
     }
+
+    int8_t i;
+    unsigned char timeDateToSetHEX[15]; // Place holder default Date
+    for (i=0; i<15; i++)
+        timeDateToSetHEX[i]=((timeDateToSet[i]/10)*16)+(timeDateToSet[i]%10);
+    I2C1_burstWrite(SLAVE_ADDR, 0, 7, timeDateToSetHEX);
 }
 
 void AlarmConfigMenu(void)
 {
-    int DoneFlag = 0, State = 0, Flag = 1;
+    int8_t DoneFlag = 0, State = 0, Flag = 1;
     Output_Clear();
     while(!DoneFlag)
     {
@@ -472,7 +498,7 @@ void AlarmConfigMenu(void)
 
 void Alarm1Config(void)
 {
-    int DoneFlag = 0, State = 0, Flag = 1;
+    int8_t DoneFlag = 0, State = 0, Flag = 1;
     Output_Clear();
     while(!DoneFlag)
     {
@@ -551,7 +577,7 @@ void Alarm1Config(void)
 
 void Alarm2Config(void)
 {
-    int DoneFlag = 0, State = 0, Flag = 1;
+    int8_t DoneFlag = 0, State = 0, Flag = 1;
     Output_Clear();
     while(!DoneFlag)
     {
@@ -636,8 +662,8 @@ void TA2_N_IRQHandler(void) // Timer A2 interrupt Rotary Encoder
 {
     SysTick_delay(1);
     //__delay_cycles(200);
-    int DT = (P5->IN & BIT7)>>7 ;
-    int Clock = (P3->IN & BIT0)>>0;
+    int8_t DT = (P5->IN & BIT7)>>7 ;
+    int8_t Clock = (P3->IN & BIT0)>>0;
 
     if(DT == Clock)
         CCWcount++;
@@ -653,9 +679,44 @@ void TA2_N_IRQHandler(void) // Timer A2 interrupt Rotary Encoder
 void T32_INT1_IRQHandler ( )                             //Interrupt Handler for Timer32 1.
 {
     TIMER32_1->INTCLR = 1;  //Clear interrupt flag so it does not interrupt again immediately.
-    MeasurmentDisplay1();
+    I2C1_burstRead(SLAVE_ADDR, 0, 7, timeDateReadback);
+
+    sprintf(Sec,"%02x",timeDateReadback[0]);
+    sprintf(Min,"%02x",timeDateReadback[1]);
+    sprintf(Hour,"%02x",timeDateReadback[2]);
+    switch(timeDateReadback[3])
+    {
+        case 0: strcpy(DoW, "Sunday   ");    break;
+        case 1: strcpy(DoW, "Monday   ");     break;
+        case 2: strcpy(DoW, "Tuesday  ");    break;
+        case 3: strcpy(DoW, "Wednesday");  break;
+        case 4: strcpy(DoW, "Thursday ");   break;
+        case 5: strcpy(DoW, "Friday   ");     break;
+        case 6: strcpy(DoW, "Saturday ");   break;
+    }
+    sprintf(Month,"%02x",timeDateReadback[5]);
+    sprintf(Day,"%02x",timeDateReadback[4]);
+    sprintf(Year,"%02x",timeDateReadback[6]);
+
+    I2C1_burstRead(SLAVE_ADDR, 0x11, 2, TempReadback);
+    Temp=(TempReadback[0]+((TempReadback[1]>>6)+1)/4)*1.8+32;
+
+    (MeasureScreenCount==0)? MeasurmentDisplay1():
+    (MeasureScreenCount==1)? MeasurmentDisplay2():
+    (MeasureScreenCount==2)? MeasurmentDisplay3():0;
+
     TIMER32_1->LOAD = 3000000;
 }
+
+//void PORT1_IRQHandler(void)
+//{
+//    //DebounceSwitch1();
+//    MeasureScreenCount = ((MeasureScreenCount+1)%3);
+//    Reset = 1;
+//    P1->IFG = 0; //Clear all flags
+//    TIMER32_1->LOAD = 10;
+//
+//}
 
 
 

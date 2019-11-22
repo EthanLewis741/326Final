@@ -11,6 +11,7 @@
 uint8_t read_back_data[16]; // array to hold values read back from flash
 uint8_t* addr_pointer; // pointer to address in flash for reading back values
 
+
 #ifndef FUNCTIONS_H_
 #define FUNCTIONS_H_
 
@@ -82,6 +83,14 @@ void ClockInit(void){
 
 void PinInit (void)
 {
+    P1->SEL0    &=~ BIT7; // Setup the P1.1 on the Launchpad as Input, Pull Up Resistor
+    P1->SEL1    &=~ BIT7;
+    P1->DIR     &=~ BIT7;
+    P1->REN     |=  BIT7;
+    P1->OUT     |=  BIT7; //Input, Pull Up Resistor
+    P1->IES     |=  BIT7; //Set pin interrupt to trigger from high to low (starts high due to pull up resistor)
+    P1->IE      |=  BIT7;
+
     //Rotary Encoder Button
     P6->SEL0    &=~ BIT6;
     P6->SEL1    &=~ BIT6;
@@ -211,7 +220,7 @@ uint8_t RotaryButton()
 {
     #define pin         P6
     #define bit         BIT6
-    static int Init = 1;
+    static int8_t Init = 1;
     if(Init)
     {
         pin->SEL0    &=~ bit; // Setup the P1.1 on the Launchpad as Input, Pull Up Resistor
@@ -222,8 +231,8 @@ uint8_t RotaryButton()
         Init = 0;
     }
 
-    int i;
-    int shift = log(bit)/log(2);
+    int8_t i;
+    int8_t shift = log(bit)/log(2);
     static uint16_t State = 0; // Current debounce status
 
     for(i=0;i<100;i++)
@@ -290,6 +299,11 @@ void I2C1_init(void) {
 
 int I2C1_burstWrite(int slaveAddr, unsigned char memAddr, int byteCount, unsigned char* data)
 {
+    CS->KEY = CS_KEY_VAL ;                  // Unlock CS module for register access
+    CS->CTL1 |= CS_CTL1_DIVS_2;
+    CS->KEY = 0;
+
+
     if (byteCount <= 0)
         return -1;              /* no write was performed */
 
@@ -311,10 +325,18 @@ int I2C1_burstWrite(int slaveAddr, unsigned char memAddr, int byteCount, unsigne
     EUSCI_B1->CTLW0 |= 0x0004;        /* send STOP */
     while(EUSCI_B1->CTLW0 & 4) ;      /* wait until STOP is sent */
 
+    CS->KEY = CS_KEY_VAL ;                  // Unlock CS module for register access
+    CS->CTL1 |= CS_CTL1_DIVS_0;
+    CS->KEY = 0;
+
     return 0;                   /* no error */
 }
 
 int I2C1_burstRead(int slaveAddr, unsigned char memAddr, int byteCount, unsigned char* data) {
+    CS->KEY = CS_KEY_VAL ;                  // Unlock CS module for register access
+    CS->CTL1 |= CS_CTL1_DIVS_2;
+    CS->KEY = 0;
+
     if (byteCount <= 0)
         return -1;              /* no read was performed */
 
@@ -340,10 +362,13 @@ int I2C1_burstRead(int slaveAddr, unsigned char memAddr, int byteCount, unsigned
 
     while(EUSCI_B1->CTLW0 & 4) ;      /* wait until STOP is sent */
 
+    CS->KEY = CS_KEY_VAL ;                  // Unlock CS module for register access
+    CS->CTL1 |= CS_CTL1_DIVS_0;
+    CS->KEY = 0;
+
+
     return 0;                   /* no error */
 }
-
-
 
 ////////////////////////////////////////////////////////////
 ///                        GPIO                          ///
