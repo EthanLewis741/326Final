@@ -14,6 +14,7 @@
 
 #include <msp.h>
 
+#define Radius 6
 unsigned char timeDateToSet[15] = {55, 58, 23, 05, 21, 11, 19, 0}; // Place holder default Date
 unsigned char timeDateReadback[7];
 unsigned char TempReadback[2];
@@ -26,11 +27,12 @@ volatile int8_t Alarm1[4] = {4,4,4,4}, Alarm2[4] = {4,4,4,4};
 #define SLAVE_ADDR 0x68 // RTC slave address
 volatile int8_t CWcount, CCWcount;
 
-volatile uint8_t Speed= 70;
-volatile char SpeedS[3], SpeedSOld[3];
+volatile float Speed=0;
+volatile float SpeedAvg, SpeedCount;
+volatile char SpeedS[5], SpeedSOld[5];
 
-volatile int Temp= 70;
-volatile char TempS[4], TempSOld[4];
+volatile float Temp= 70;
+volatile char TempS[5], TempSOld[5];
 
 int8_t MeasureScreenCount = 1;
 int8_t Reset = 1;
@@ -45,12 +47,18 @@ int main(void)
     P9->DIR |=    (BIT4|BIT6);                        // make P9.2 (D/C), P9.3 (Reset), and P9.4 (TFT_CS) out
 //    P9->OUT |=  (BIT4|BIT6);                      // configure P9.2 (D/C), P9.3 (Reset), and P9.4 (TFT_CS) as GPIO
 
-     // index
+//    P10->SEL0 &= ~ (BIT4);
+//    P10->SEL1 &= ~ (BIT4);                      // configure P9.2 (D/C), P9.3 (Reset), and P9.4 (TFT_CS) as GPIO
+//    P10->DIR |=    (BIT4);
+//    P10->OUT &= ~     (BIT4);
+    // index
     // halting the watch dog is done in the system_msp432p401r.c startup
     ClockInit();// Setting MCLK to 48MHz for faster programming
     ST7735_InitR(INITR_BLACKTAB); // Initiate the LCD
     TimerA_Capture_Init();
+    SpeedInit();
     PinInit();
+    adcsetup();
 
 
     I2C1_init(); // Initiate the I2C communication for the RTC
@@ -61,6 +69,9 @@ int main(void)
 
     NVIC_EnableIRQ(PORT1_IRQn);
     NVIC_SetPriority(PORT1_IRQn, 10);
+
+    NVIC_EnableIRQ (TA1_N_IRQn); // enable capture interrupt
+    NVIC_SetPriority(TA1_N_IRQn, 30);
 
     NVIC_EnableIRQ( T32_INT1_IRQn );
     NVIC_SetPriority(T32_INT1_IRQn, 20);
@@ -175,13 +186,13 @@ void MeasurmentDisplay1(void)
 
     //Speed
     //Speed++;
-    sprintf(SpeedS,"%03d", Speed);
+    sprintf(SpeedS,"%03.0f", Speed);
     if(strcmp(SpeedSOld, SpeedS) || Reset)
         ST7735_DrawStringV2(2,12, SpeedS ,0xFFE0,2,2);
 
 
     //Temp
-    sprintf(TempS,"%03d", Temp);
+    sprintf(TempS,"%03.0f", Temp);
     if(strcmp(TempSOld, TempS)|| Reset)
         ST7735_DrawStringV2(13,12, TempS ,0xFFE0,2,2);
 
@@ -221,13 +232,13 @@ void MeasurmentDisplay2(void)
 
     //Speed
     //Speed++;
-    sprintf(SpeedS,"%03d", Speed);
+    sprintf(SpeedS,"%03.1f\0", Speed);
     if(strcmp(SpeedSOld, SpeedS) || Reset)
         ST7735_DrawStringV2(6,5, SpeedS ,0xFFE0,3,3);
 
 
     //Temp
-    sprintf(TempS,"%03d", Temp);
+    sprintf(TempS,"%03.0f", Temp);
     if(strcmp(TempSOld, TempS)|| Reset)
         ST7735_DrawStringV2(2,12, TempS ,0xFFE0,2,2);
 
@@ -276,13 +287,13 @@ void MeasurmentDisplay3(void)
 
     //Speed
     //Speed++;
-    sprintf(SpeedS,"%03d", Speed);
+    sprintf(SpeedS,"%03.0f", Speed);
     if(strcmp(SpeedSOld, SpeedS) || Reset)
         ST7735_DrawStringV2(2,12, SpeedS ,0xFFE0,2,2);
 
 
     //Temp
-    sprintf(TempS,"%03d", Temp);
+    sprintf(TempS,"%03.0f", Temp);
     if(strcmp(TempSOld, TempS)|| Reset)
         ST7735_DrawStringV2(13,12, TempS ,0xFFE0,2,2);
 
@@ -648,6 +659,16 @@ void Alarm2Config(void)
 ////////////////////////////////////////////////////////////
 ///                        Interrupts                    ///
 ///////////////////////////////////////////////////////////
+
+void TA1_N_IRQHandler(void) // Timer A2 interrupt service routine
+{
+    SpeedAvg += TIMER_A1 -> CCR[2];//OnFlag holds the data for the hall sensor
+    TIMER_A1->CTL |= TIMER_A_CTL_CLR;
+
+    SpeedCount++;//OnFlag continuously reads in, holding the values of j until
+    TIMER_A1->CCTL[2] &= ~(TIMER_A_CCTLN_CCIFG); // Clear the interrupt flag
+}
+
 void TA2_N_IRQHandler(void) // Timer A2 interrupt Rotary Encoder
 {
     SysTick_delay(1);
@@ -669,6 +690,31 @@ void TA2_N_IRQHandler(void) // Timer A2 interrupt Rotary Encoder
 void T32_INT1_IRQHandler (void)                             //Interrupt Handler for Timer32 1.
 {
     TIMER32_1->INTCLR = 1;  //Clear interrupt flag so it does not interrupt again immediately.
+
+    ADC14->CTL0 |= 1; //start a conversion
+    while(!ADC14->IFGR0); // wait until conversion complete
+    int result = ADC14->MEM[5]; // immediately store value in a variable
+    //result = 6001;
+    //(result>=6000)?BacklightPWM(10, 1):
+    (result>=5000)?BacklightPWM(10, .8):
+    (result>=4000 && result<5000)?BacklightPWM(10, .7):
+    (result>=3000 && result<4000)?BacklightPWM(10, .6):
+    (result>=2000 && result<3000)?BacklightPWM(10, .5):
+    (result>=1000 && result<2000)?BacklightPWM(10, .4):
+    (result<1000)?BacklightPWM(10, 1):0;
+
+    SpeedAvg/=SpeedCount;
+    SpeedAvg/=32768;
+    SpeedAvg*=2;
+    SpeedAvg= 1/SpeedAvg;
+    SpeedAvg*=60;
+    //SpeedAvg = (1/(2/(SpeedCount*32768)))*60;//RPM
+    Speed = ((2*3.14152*Radius)*SpeedAvg*60)/5280;//MPH
+    (SpeedCount<3)?Speed=0:0;
+
+    SpeedAvg = 0;
+    SpeedCount = 0;
+
     I2C1_burstRead(SLAVE_ADDR, 0, 7, timeDateReadback);
 
     sprintf(Sec,"%02x",timeDateReadback[0]);

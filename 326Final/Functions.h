@@ -99,20 +99,41 @@ void PinInit (void)
     P6->OUT     &=~ BIT6; //Input, Pull Down Resistor
 }
 
-void TimerA_PWM_Init (int PWMperiod, double DutyCycle) // set up pwm for for the trigger
+void adcsetup(void)
 {
-    P2->DIR |= BIT5 ;                 // P2.5 set TA0.1
-    P2->SEL0 |= BIT5 ;
-    P2->SEL1 &= ~(BIT5 );
-    PWMperiod = PWMperiod*32;
-
-    TIMER_A0->CCR[0] = PWMperiod;            // PWM Period
-    TIMER_A0->CCTL[2] = TIMER_A_CCTLN_OUTMOD_7; // CCR2 reset/set
-    TIMER_A0->CCR[2] = (PWMperiod)*DutyCycle;                 // CCR2 PWM duty cycle
-    TIMER_A0->CTL = TIMER_A_CTL_SSEL__ACLK | // SMCLK
-            TIMER_A_CTL_MC__UP |            // Up mode
-            TIMER_A_CTL_CLR;                // Clear TAR
+    ADC14->CTL0 = 0x00000010; //power on and disabled during configuration
+    ADC14->CTL0 |= 0x04D80300; // S/H pulse mode, MCLCK, 32 sample clocks,
+    //sw trigger, /4 clock divide
+    ADC14->CTL1 = 0x00000030; // 14-bit resolution
+    ADC14->MCTL[5] = 0; // A0 input, single ended, vref=avcc
+    P5->SEL1 |= 0x20; // configure pin 5.5 for AO
+    P5->SEL0 |= 0x20;
+    ADC14->CTL1 |= 0x00050000; //convert for mem reg 5
+    ADC14->CTL0 |= 2; //enable ADC after configuration
 }
+
+void SpeedInit (void) // set up timer A1.2 capture
+{
+    P7->SEL0    |=  BIT6; // TA0.CCI2A input capture pin, second function
+    P7->SEL1    &=~ BIT6; // TA0.CCI2A input capture pin, second function
+    P7->DIR     &=~ BIT6;
+
+
+    TIMER_A1->CTL |= TIMER_A_CTL_TASSEL_1 | // Use Aclk as clock source,
+    TIMER_A_CTL_MC_2| // Start timer in continuous mode
+    TIMER_A_CTL_CLR; // clear TA0R
+    //(0x0214)
+    TIMER_A1->CCTL[2] |= TIMER_A_CCTLN_CM_1 | // Capture rising and falling edge,
+    TIMER_A_CCTLN_CCIS_0 | // Use CCI2A
+    TIMER_A_CCTLN_CCIE | // Enable capture interrupt
+    TIMER_A_CCTLN_CAP | // Enable capture mode,
+    TIMER_A_CCTLN_SCS; // Synchronous capture
+    //(0x4910)
+
+
+
+}
+
 
 ////////////////////////////////////////////////////////////
 ///                    LCD Stuff                        ///
@@ -125,6 +146,20 @@ void TimerA_PWM_Init (int PWMperiod, double DutyCycle) // set up pwm for for the
 //    else if(LCD == 2){ P9->OUT |= (BIT6); P9->OUT &=~(BIT4);}
 //    else if(LCD == 3) P9->OUT |=  (BIT4|BIT6);
 //}
+void BacklightPWM (int PWMperiod, double DutyCycle) // set up pwm for for the trigger
+{
+    P10->DIR |= BIT5 ;                 // P2.5 set TA0.1
+    P10->SEL0 |= BIT5 ;
+    P10->SEL1 &= ~(BIT5 );
+    PWMperiod = PWMperiod*32;
+
+    TIMER_A3->CCR[0] = PWMperiod;            // PWM Period
+    TIMER_A3->CCTL[1] = TIMER_A_CCTLN_OUTMOD_7; // CCR2 reset/set
+    TIMER_A3->CCR[1] = (PWMperiod)*DutyCycle;                 // CCR2 PWM duty cycle
+    TIMER_A3->CTL = TIMER_A_CTL_SSEL__ACLK | // SMCLK
+            TIMER_A_CTL_MC__UP |            // Up mode
+            TIMER_A_CTL_CLR;                // Clear TAR
+}
 
 void drawCircle(int xc, int yc, int x, int y, int color)
 {
