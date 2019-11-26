@@ -5,11 +5,11 @@
  *      Author: lewiset
  */
 #include "ST7735.h"
+#include <Math.h>
 //#include "main.c"
 
 #define CALIBRATION_START 0x000200054 // Starting memory address in flash
-uint8_t read_back_data[16]; // array to hold values read back from flash
-uint8_t* addr_pointer; // pointer to address in flash for reading back values
+ // pointer to address in flash for reading back values
 
 
 #ifndef FUNCTIONS_H_
@@ -83,6 +83,7 @@ void ClockInit(void){
 
 void PinInit (void)
 {
+    //Screen Select
     P1->SEL0    &=~ BIT7; // Setup the P1.1 on the Launchpad as Input, Pull Up Resistor
     P1->SEL1    &=~ BIT7;
     P1->DIR     &=~ BIT7;
@@ -90,6 +91,15 @@ void PinInit (void)
     P1->OUT     |=  BIT7; //Input, Pull Up Resistor
     P1->IES     |=  BIT7; //Set pin interrupt to trigger from high to low (starts high due to pull up resistor)
     P1->IE      |=  BIT7;
+
+    //Watchdog Reset
+    P3->SEL0    &=~ BIT7; // Setup the P1.1 on the Launchpad as Input, Pull Up Resistor
+    P3->SEL1    &=~ BIT7;
+    P3->DIR     &=~ BIT7;
+    P3->REN     |=  BIT7;
+    P3->OUT     |=  BIT7; //Input, Pull Up Resistor
+    P3->IES     &=~  BIT7; //Set pin interrupt to trigger from high to low (starts high due to pull up resistor)
+
 
     //Rotary Encoder Button
     P6->SEL0    &=~ BIT6;
@@ -134,6 +144,14 @@ void SpeedInit (void) // set up timer A1.2 capture
 
 }
 
+void WatchdogInit(void)
+{
+    WDT_A->CTL = 0x5A00 // Watchdog Password
+    | WDT_A_CTL_SSEL__ACLK //Set to ACLK
+    | 0<<4 //Set to Watchdog mode
+    | 1<<3 // Clear Timer
+    | WDT_A_CTL_IS_3; /*!< Watchdog clock source /(2^(19)) (00:00:16 at 32.768 kHz) */
+}
 
 ////////////////////////////////////////////////////////////
 ///                    LCD Stuff                        ///
@@ -283,34 +301,58 @@ uint8_t RotaryButton()
 ////////////////////////////////////////////////////////////
 ///                    Flash Control                    ///
 ///////////////////////////////////////////////////////////
-void MemWriteInit(void){
-        addr_pointer = CALIBRATION_START; // point to address in flash for saving data
-        uint8_t i;
-        for(i=0; i<16; i++)
-        {// read values in flash before programming
-            read_back_data[i] = *addr_pointer++;
+void MemShift(unsigned char* Data, unsigned char Sym)
+{
+    uint8_t i,j;
+    uint8_t* addr_pointer;
+    unsigned char MemReadBack[5][8]=0;
+
+
+    for(i=0;i<7;i++)
+        MemReadBack[0][i]= Data[i];
+    MemReadBack[0][7]= Sym;
+
+    for(j=1;j<5;j++)
+        for(i=0;i<8;i++)
+        {
+            addr_pointer = (CALIBRATION_START +(0x14 * (j-1))+i);
+            MemReadBack[j][i]= *addr_pointer;
         }
+
+
+    MemWriteInit();
+    char* temp = MemReadBack[0];
+    for(j=0;j<5;j++)
+        MemWrite(MemReadBack[j], CALIBRATION_START +(0x14 * j), 8);
+    flashwritefinish();
+
+}
+
+void MemWriteInit(void)
+{
         /* Unprotecting Info Bank 0, Sector 0 */
         MAP_FlashCtl_unprotectSector(FLASH_INFO_MEMORY_SPACE_BANK0,FLASH_SECTOR0);
 
         /* Erase the flash sector starting CALIBRATION_START. */
         while(!MAP_FlashCtl_eraseSector(CALIBRATION_START));
-
 }
 
-void MemWrite(char data[], unsigned int address, int length){
+void MemWrite(char data[8], unsigned int address, int length){
     /* Program the flash with the new data. */
         uint8_t i;
         while (!MAP_FlashCtl_programMemory(data,(void*) address, length)); // leave first 4 bytes unprogrammed
 }
 
-void MemRead(void){
+void MemRead(uint8_t MemAddr){
     uint8_t i;
-    addr_pointer = CALIBRATION_START; // point to address in flash for saved data
-    for(i=0; i<16; i++)
+    uint8_t* addr_pointer;
+    uint8_t read_back_data[7]; // array to hold values read back from flash
+    addr_pointer = CALIBRATION_START +(0xD * MemAddr); // point to address in flash for saved data
+    for(i=0; i<7; i++)
     {// read values in flash after programming
         read_back_data[i] = *addr_pointer++;
     }
+    return read_back_data;
 }
 
 void flashwritefinish(void)

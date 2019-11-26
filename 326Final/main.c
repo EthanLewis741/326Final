@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <Math.h>
 #include "driverlib.h"
 
 /* Standard Includes */
@@ -25,6 +26,7 @@ volatile char SecOld[2], MinOld[2], HourOld[2], DoWOld[15], MonthOld[2], DayOld[
 volatile int8_t Alarm1[4] = {4,4,4,4}, Alarm2[4] = {4,4,4,4};
 
 #define SLAVE_ADDR 0x68 // RTC slave address
+#define CALIBRATION_START 0x000200054 // Starting memory address in flash
 volatile int8_t CWcount, CCWcount;
 
 volatile float Speed=0;
@@ -53,19 +55,22 @@ int main(void)
 //    P10->OUT &= ~     (BIT4);
     // index
     // halting the watch dog is done in the system_msp432p401r.c startup
+
     ClockInit();// Setting MCLK to 48MHz for faster programming
     ST7735_InitR(INITR_BLACKTAB); // Initiate the LCD
     TimerA_Capture_Init();
     SpeedInit();
     PinInit();
     adcsetup();
-
-
+    WatchdogInit();
     I2C1_init(); // Initiate the I2C communication for the RTC
 
 
     TIMER32_1->CONTROL = 0b11100111;
     TIMER32_1->LOAD = 3000000;
+
+    NVIC_EnableIRQ(PORT3_IRQn);
+    NVIC_SetPriority(PORT3_IRQn, 1);
 
     NVIC_EnableIRQ(PORT1_IRQn);
     NVIC_SetPriority(PORT1_IRQn, 10);
@@ -81,18 +86,15 @@ int main(void)
 
 
 
-    //TimerA_PWM_Init(10000,.5);
-    int8_t i;
-    unsigned char timeDateToSetHEX[15]; // Place holder default Date
-    for (i=0; i<15; i++)
-        timeDateToSetHEX[i]=((timeDateToSet[i]/10)*16)+(timeDateToSet[i]%10);
-    I2C1_burstWrite(SLAVE_ADDR, 0, 7, timeDateToSetHEX);
+    I2C1_burstRead(SLAVE_ADDR, 0, 7, timeDateReadback);
+    P3->IE      |=  BIT7;
 
     while(1)
     {
         //Alarm1Config();
         //MeasurmentDisplay2();
        MainMenu();
+        //AlarmHist();
     }
 
 }
@@ -116,6 +118,12 @@ void MainMenu(void)
             }
             break;
         case 1: // Alarm History
+            if(RotaryButton())
+            {
+                Output_Clear();
+                AlarmHist();
+                Flag =1;
+            }
             break;
 
         case 2: //Alarm Config
@@ -186,13 +194,13 @@ void MeasurmentDisplay1(void)
 
     //Speed
     //Speed++;
-    sprintf(SpeedS,"%03.0f", Speed);
+    sprintf(SpeedS,"%03.0f\0", Speed);
     if(strcmp(SpeedSOld, SpeedS) || Reset)
         ST7735_DrawStringV2(2,12, SpeedS ,0xFFE0,2,2);
 
 
     //Temp
-    sprintf(TempS,"%03.0f", Temp);
+    sprintf(TempS,"%03.0f\0", Temp);
     if(strcmp(TempSOld, TempS)|| Reset)
         ST7735_DrawStringV2(13,12, TempS ,0xFFE0,2,2);
 
@@ -238,7 +246,7 @@ void MeasurmentDisplay2(void)
 
 
     //Temp
-    sprintf(TempS,"%03.0f", Temp);
+    sprintf(TempS,"%03.0f\0", Temp);
     if(strcmp(TempSOld, TempS)|| Reset)
         ST7735_DrawStringV2(2,12, TempS ,0xFFE0,2,2);
 
@@ -287,13 +295,13 @@ void MeasurmentDisplay3(void)
 
     //Speed
     //Speed++;
-    sprintf(SpeedS,"%03.0f", Speed);
+    sprintf(SpeedS,"%03.0f\0", Speed);
     if(strcmp(SpeedSOld, SpeedS) || Reset)
         ST7735_DrawStringV2(2,12, SpeedS ,0xFFE0,2,2);
 
 
     //Temp
-    sprintf(TempS,"%03.0f", Temp);
+    sprintf(TempS,"%03.0f\0", Temp);
     if(strcmp(TempSOld, TempS)|| Reset)
         ST7735_DrawStringV2(13,12, TempS ,0xFFE0,2,2);
 
@@ -655,6 +663,51 @@ void Alarm2Config(void)
     Output_Clear();
 }
 
+void AlarmHist(void)
+{
+
+    uint8_t i,j;
+    uint8_t* addr_pointer;
+    unsigned char Alarms[8][5] =0;
+    char TimeString[30] = 0;
+
+
+    for(j=0;j<5;j++)
+    {
+        TimeString[0] = 0;
+        for(i=0;i<8;i++)
+        {
+            addr_pointer = (CALIBRATION_START +(0x14 * (j))+i);
+            Alarms[j][i]= *addr_pointer;
+        }
+        sprintf(TimeString, "%x:%x:%x %x/%x/%x\0",
+                Alarms[j][2],
+                Alarms[j][1],
+                Alarms[j][0],
+                Alarms[j][5],
+                Alarms[j][4],
+                Alarms[j][6]);
+        ST7735_DrawStringV2(1,(4+j*2),TimeString,0xFFE0,1,1);
+
+        sprintf(TimeString,"%s\0",(Alarms[j][7]=='S')?"Speed":"Temp");
+        ST7735_DrawStringV2(3,(4+j*2+1),TimeString,0xFFE0,1,1);
+    }
+
+    ST7735_DrawStringV2(3,14, "Done" ,0x001F,2,2);//Print it to the LCD!
+    circleBres(10, 147, 5,0x001F);
+    int8_t DoneFlag = 0;
+    while(!DoneFlag)
+    {
+        //SysTick_delay(1000);
+        if(RotaryButton())
+        {
+            DoneFlag=1;
+            Output_Clear();
+        }
+
+
+    }
+}
 
 ////////////////////////////////////////////////////////////
 ///                        Interrupts                    ///
@@ -690,6 +743,7 @@ void TA2_N_IRQHandler(void) // Timer A2 interrupt Rotary Encoder
 void T32_INT1_IRQHandler (void)                             //Interrupt Handler for Timer32 1.
 {
     TIMER32_1->INTCLR = 1;  //Clear interrupt flag so it does not interrupt again immediately.
+    WatchdogInit();
 
     ADC14->CTL0 |= 1; //start a conversion
     while(!ADC14->IFGR0); // wait until conversion complete
@@ -759,6 +813,13 @@ void PORT1_IRQHandler(void)
 
 }
 
+void PORT3_IRQHandler(void)
+{
+    MemShift(timeDateReadback, 'S');
+    P3->IFG = 0; //Clear all flags
+    //while(1);
+
+}
 
 
 
