@@ -223,11 +223,11 @@ void circleBres(int xc, int yc, int rad, int color)
 
 }
 
-uint32_t ST7735_DrawStringV2(uint16_t x, uint16_t y, char *pt, int16_t textColor, int16_t size, int16_t space){
+uint32_t ST7735_DrawStringV2(uint16_t x, uint16_t y, char *pt, int16_t textColor, int16_t BGcolor, int16_t size, int16_t space){
   uint32_t count = 0;
   if(y>15) return 0;
   while(*pt){
-      ST7735_DrawChar(x*6, y*10, *pt, textColor, ST7735_BLACK, size);
+      ST7735_DrawChar(x*6, y*10, *pt, textColor, BGcolor, size);
       //ST7735_DrawCharS(x*6, y*10, *pt, textColor, ST7735_BLACK, 2);
     pt++;
     x = x+space;
@@ -305,14 +305,14 @@ void MemShift(unsigned char* Data, unsigned char Sym)
 {
     uint8_t i,j;
     uint8_t* addr_pointer;
-    unsigned char MemReadBack[5][8]=0;
+    unsigned char MemReadBack[7][8]=0;
 
 
     for(i=0;i<7;i++)
         MemReadBack[0][i]= Data[i];
     MemReadBack[0][7]= Sym;
 
-    for(j=1;j<5;j++)
+    for(j=1;j<7;j++)
         for(i=0;i<8;i++)
         {
             addr_pointer = (CALIBRATION_START +(0x14 * (j-1))+i);
@@ -321,8 +321,7 @@ void MemShift(unsigned char* Data, unsigned char Sym)
 
 
     MemWriteInit();
-    char* temp = MemReadBack[0];
-    for(j=0;j<5;j++)
+    for(j=0;j<7;j++)
         MemWrite(MemReadBack[j], CALIBRATION_START +(0x14 * j), 8);
     flashwritefinish();
 

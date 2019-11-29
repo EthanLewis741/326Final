@@ -15,6 +15,7 @@
 
 #include <msp.h>
 
+int PrimaryColor = 0xFFE0, SecondaryColor = 0x001F, BackgroundColor = 0x0000;
 #define Radius 6
 unsigned char timeDateToSet[15] = {55, 58, 23, 05, 21, 11, 19, 0}; // Place holder default Date
 unsigned char timeDateReadback[7];
@@ -38,6 +39,7 @@ volatile char TempS[5], TempSOld[5];
 
 int8_t MeasureScreenCount = 1;
 int8_t Reset = 1;
+int8_t TimePromptCount=0;
 
 int main(void)
 {
@@ -83,7 +85,9 @@ int main(void)
 
     __enable_irq ( ); // enable global interrupts
 
-
+    uint8_t i, *addr_pointer;
+    for(i = 0; i<5; i++){addr_pointer = CALIBRATION_START +(0x14*5)+i; Alarm1[i]=*addr_pointer;}
+    for(i = 0; i<5; i++){addr_pointer = CALIBRATION_START +(0x14*6)+i; Alarm2[i]=*addr_pointer;}
 
 
     I2C1_burstRead(SLAVE_ADDR, 0, 7, timeDateReadback);
@@ -139,17 +143,17 @@ void MainMenu(void)
         if(Flag)
         {
             LCDSelect = 1;
-            ST7735_DrawStringV2(3,4, "Time Set" ,(State == 0)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
-            circleBres(10, 46, 5,(State == 0)? 0x001F:0x0000);
-            //ST7735_DrawStringV2(3,6, "Set" ,0xFFE0,2,2);//Print it to the LCD!
+            ST7735_DrawStringV2(3,4, "Time Set" ,(State == 0)? SecondaryColor:PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
+            circleBres(10, 46, 5,(State == 0)? SecondaryColor:BackgroundColor);
+            //ST7735_DrawStringV2(3,6, "Set" ,PrimaryColor,2,2);//Print it to the LCD!
 
-            ST7735_DrawStringV2(3,7, "Alarm " ,(State == 1)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
-            ST7735_DrawStringV2(3,9, "History" ,(State == 1)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
-            circleBres(10, 90, 5,(State == 1)? 0x001F:0x0000);
+            ST7735_DrawStringV2(3,7, "Alarm " ,(State == 1)? SecondaryColor:PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
+            ST7735_DrawStringV2(3,9, "History" ,(State == 1)? SecondaryColor:PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
+            circleBres(10, 90, 5,(State == 1)? SecondaryColor:BackgroundColor);
 
-            ST7735_DrawStringV2(3,12, "Alarm" ,(State == 2)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
-            ST7735_DrawStringV2(3,14, "Config" ,(State == 2)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
-            circleBres(10, 135, 5,(State == 2)? 0x001F:0x0000);
+            ST7735_DrawStringV2(3,12, "Alarm" ,(State == 2)? SecondaryColor:PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
+            ST7735_DrawStringV2(3,14, "Config" ,(State == 2)? SecondaryColor:PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
+            circleBres(10, 135, 5,(State == 2)? SecondaryColor:BackgroundColor);
             Flag = 0;
         }
 
@@ -163,46 +167,46 @@ void MeasurmentDisplay1(void)
     if(Reset)
     {
         Output_Clear();
-        ST7735_FillRect(64, 110, 2, 70, 0xFFE0);
-        ST7735_FillRect(0, 110, 128, 2, 0xFFE0);
-        ST7735_DrawStringV2(7,4, ":"  ,0xFFE0,2,2);//Print it to the LCD!
-        ST7735_DrawStringV2(13,4, ":"  ,0xFFE0,2,2);//Print it to the LCD!
-        ST7735_DrawStringV2(7,8, "/"  ,0xFFE0,2,2);//Print it to the LCD!
-        ST7735_DrawStringV2(13,8, "/"  ,0xFFE0,2,2);//Print it to the LCD!
-        ST7735_DrawStringV2(2,14, "MPH" ,0xFFE0,2,2);
-        ST7735_DrawStringV2(15,14, "o" ,0xFFE0,1,1);
-        ST7735_DrawStringV2(16,14, "F" ,0xFFE0,2,2);
+        ST7735_FillRect(64, 110, 2, 70, PrimaryColor);
+        ST7735_FillRect(0, 110, 128, 2, PrimaryColor);
+        ST7735_DrawStringV2(7,4, ":"  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(13,4, ":"  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(7,8, "/"  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(13,8, "/"  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(2,14, "MPH" ,PrimaryColor,BackgroundColor,2,2);
+        ST7735_DrawStringV2(15,14, "o" ,PrimaryColor,BackgroundColor,1,1);
+        ST7735_DrawStringV2(16,14, "F" ,PrimaryColor,BackgroundColor,2,2);
 
     }
 
 
     //Time
     if(strcmp(HourOld, Hour) || Reset)
-        ST7735_DrawStringV2(3,4, Hour ,0xFFE0,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(3,4, Hour ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
     if(strcmp(MinOld, Min) || Reset)
-        ST7735_DrawStringV2(9,4, Min  ,0xFFE0,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(9,4, Min  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
     if(strcmp(SecOld, Sec) || Reset)
-        ST7735_DrawStringV2(15,4, Sec  ,0xFFE0,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(15,4, Sec  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
     if(strcmp(DoWOld, DoW) || Reset)
-        ST7735_DrawStringV2(3,6, DoW  ,0xFFE0,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(3,6, DoW  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
     if(strcmp(MonthOld, Month) || Reset)
-        ST7735_DrawStringV2(3,8, Month,0xFFE0,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(3,8, Month,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
     if(strcmp(DayOld, Day) || Reset)
-        ST7735_DrawStringV2(9,8, Day ,0xFFE0,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(9,8, Day ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
     if(strcmp(YearOld, Year) || Reset)
-        ST7735_DrawStringV2(15,8, Year,0xFFE0,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(15,8, Year,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
 
     //Speed
     //Speed++;
     sprintf(SpeedS,"%03.0f\0", Speed);
     if(strcmp(SpeedSOld, SpeedS) || Reset)
-        ST7735_DrawStringV2(2,12, SpeedS ,0xFFE0,2,2);
+        ST7735_DrawStringV2(2,12, SpeedS ,PrimaryColor,BackgroundColor,2,2);
 
 
     //Temp
     sprintf(TempS,"%03.0f\0", Temp);
     if(strcmp(TempSOld, TempS)|| Reset)
-        ST7735_DrawStringV2(13,12, TempS ,0xFFE0,2,2);
+        ST7735_DrawStringV2(13,12, TempS ,PrimaryColor,BackgroundColor,2,2);
 
 
     LCDSelect = 1;
@@ -217,13 +221,13 @@ void MeasurmentDisplay2(void)
     if(Reset)
     {
         Output_Clear();
-        ST7735_FillRect(63, 110, 2, 70, 0xFFE0);
-        ST7735_FillRect(0, 110, 128, 2, 0xFFE0);
-        ST7735_DrawStringV2(15,12, ":"  ,0xFFE0,2,2);//Print it to the LCD!
-        ST7735_DrawStringV2(13,14, ":"  ,0xFFE0,2,2);//Print it to the LCD!
-        ST7735_DrawStringV2(6,8, "MPH" ,0xFFE0,3,3);
-        ST7735_DrawStringV2(4,14, "o" ,0xFFE0,1,1);
-        ST7735_DrawStringV2(5,14, "F" ,0xFFE0,2,2);
+        ST7735_FillRect(63, 110, 2, 70, PrimaryColor);
+        ST7735_FillRect(0, 110, 128, 2, PrimaryColor);
+        ST7735_DrawStringV2(15,12, ":"  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(13,14, ":"  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(6,8, "MPH" ,PrimaryColor,BackgroundColor,3,3);
+        ST7735_DrawStringV2(4,14, "o" ,PrimaryColor,BackgroundColor,1,1);
+        ST7735_DrawStringV2(5,14, "F" ,PrimaryColor,BackgroundColor,2,2);
 
 
     }
@@ -231,24 +235,24 @@ void MeasurmentDisplay2(void)
 
     //Time
     if(strcmp(HourOld, Hour) || Reset)
-        ST7735_DrawStringV2(11,12, Hour ,0xFFE0,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(11,12, Hour ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
     if(strcmp(MinOld, Min) || Reset)
-        ST7735_DrawStringV2(17,12, Min  ,0xFFE0,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(17,12, Min  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
     if(strcmp(SecOld, Sec) || Reset)
-        ST7735_DrawStringV2(15,14, Sec  ,0xFFE0,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(15,14, Sec  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
 
 
     //Speed
     //Speed++;
     sprintf(SpeedS,"%03.1f\0", Speed);
     if(strcmp(SpeedSOld, SpeedS) || Reset)
-        ST7735_DrawStringV2(6,5, SpeedS ,0xFFE0,3,3);
+        ST7735_DrawStringV2(6,5, SpeedS ,PrimaryColor,BackgroundColor,3,3);
 
 
     //Temp
     sprintf(TempS,"%03.0f\0", Temp);
     if(strcmp(TempSOld, TempS)|| Reset)
-        ST7735_DrawStringV2(2,12, TempS ,0xFFE0,2,2);
+        ST7735_DrawStringV2(2,12, TempS ,PrimaryColor,BackgroundColor,2,2);
 
 
 
@@ -263,15 +267,15 @@ void MeasurmentDisplay3(void)
     if(Reset)
     {
         Output_Clear();
-        ST7735_FillRect(64, 110, 2, 70, 0xFFE0);
-        ST7735_FillRect(0, 110, 128, 2, 0xFFE0);
-        ST7735_DrawStringV2(7,4, ":"  ,0xFFE0,2,2);//Print it to the LCD!
-        ST7735_DrawStringV2(13,4, ":"  ,0xFFE0,2,2);//Print it to the LCD!
-        ST7735_DrawStringV2(7,8, "/"  ,0xFFE0,2,2);//Print it to the LCD!
-        ST7735_DrawStringV2(13,8, "/"  ,0xFFE0,2,2);//Print it to the LCD!
-        ST7735_DrawStringV2(2,14, "MPH" ,0xFFE0,2,2);
-        ST7735_DrawStringV2(15,14, 167 ,0xFFE0,2,2);
-        ST7735_DrawStringV2(16,14, "3" ,0xFFE0,2,2);
+        ST7735_FillRect(64, 110, 2, 70, PrimaryColor);
+        ST7735_FillRect(0, 110, 128, 2, PrimaryColor);
+        ST7735_DrawStringV2(7,4, ":"  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(13,4, ":"  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(7,8, "/"  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(13,8, "/"  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(2,14, "MPH" ,PrimaryColor,BackgroundColor,2,2);
+        ST7735_DrawStringV2(15,14, 167 ,PrimaryColor,BackgroundColor,2,2);
+        ST7735_DrawStringV2(16,14, "3" ,PrimaryColor,BackgroundColor,2,2);
 
 
     }
@@ -279,31 +283,31 @@ void MeasurmentDisplay3(void)
 
     //Time
     if(strcmp(HourOld, Hour) || Reset)
-        ST7735_DrawStringV2(3,4, Hour ,0xFFE0,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(3,4, Hour ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
     if(strcmp(MinOld, Min) || Reset)
-        ST7735_DrawStringV2(9,4, Min  ,0xFFE0,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(9,4, Min  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
     if(strcmp(SecOld, Sec) || Reset)
-        ST7735_DrawStringV2(15,4, Sec  ,0xFFE0,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(15,4, Sec  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
     if(strcmp(DoWOld, DoW) || Reset)
-        ST7735_DrawStringV2(3,6, DoW  ,0xFFE0,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(3,6, DoW  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
     if(strcmp(MonthOld, Month) || Reset)
-        ST7735_DrawStringV2(3,8, Month,0xFFE0,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(3,8, Month,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
     if(strcmp(DayOld, Day) || Reset)
-        ST7735_DrawStringV2(9,8, Day ,0xFFE0,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(9,8, Day ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
     if(strcmp(YearOld, Year) || Reset)
-        ST7735_DrawStringV2(15,8, Year,0xFFE0,2,2);//Print it to the LCD!
+        ST7735_DrawStringV2(15,8, Year,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
 
     //Speed
     //Speed++;
     sprintf(SpeedS,"%03.0f\0", Speed);
     if(strcmp(SpeedSOld, SpeedS) || Reset)
-        ST7735_DrawStringV2(2,12, SpeedS ,0xFFE0,2,2);
+        ST7735_DrawStringV2(2,12, SpeedS ,PrimaryColor,BackgroundColor,2,2);
 
 
     //Temp
     sprintf(TempS,"%03.0f\0", Temp);
     if(strcmp(TempSOld, TempS)|| Reset)
-        ST7735_DrawStringV2(13,12, TempS ,0xFFE0,2,2);
+        ST7735_DrawStringV2(13,12, TempS ,PrimaryColor,BackgroundColor,2,2);
 
     strcpy(SecOld, Sec); strcpy(HourOld, Hour); strcpy(MinOld, Min); strcpy(DoWOld, DoW); strcpy(MonthOld, Month); strcpy(DayOld, Day); strcpy(YearOld, Year);
     strcpy(SpeedSOld, SpeedS);
@@ -315,10 +319,11 @@ void MeasurmentDisplay3(void)
 
 void DateInput(void){
     int8_t State = 0, DoneFlag = 0, Flag = 1;
+    TimePromptCount = 1;
     Output_Clear();
     //ST7735_FillScreen(0xFFFF);
 
-    while(!DoneFlag)
+    while(!DoneFlag && TimePromptCount<60)
     {
         switch(State){
         case 0: // Seconds
@@ -422,19 +427,19 @@ void DateInput(void){
         if(Flag)
         {
             LCDSelect = 1;
-            ST7735_DrawStringV2(15,6, Sec  ,(State == 0)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
-            ST7735_DrawStringV2(7,6, ":"  ,0xFFE0,2,2);//Print it to the LCD!
-            ST7735_DrawStringV2(9,6, Min  ,(State == 1)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
-            ST7735_DrawStringV2(13,6, ":"  ,0xFFE0,2,2);//Print it to the LCD!
-            ST7735_DrawStringV2(3,6, Hour ,(State == 2)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+            ST7735_DrawStringV2(15,6, Sec  ,(State == 0)? SecondaryColor:PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
+            ST7735_DrawStringV2(7,6, ":"  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
+            ST7735_DrawStringV2(9,6, Min  ,(State == 1)? SecondaryColor:PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
+            ST7735_DrawStringV2(13,6, ":"  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
+            ST7735_DrawStringV2(3,6, Hour ,(State == 2)? SecondaryColor:PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
 
-            ST7735_DrawStringV2(3,8, DoW  ,(State == 3)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+            ST7735_DrawStringV2(3,8, DoW  ,(State == 3)? SecondaryColor:PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
 
-            ST7735_DrawStringV2(3,10, Month,(State == 4)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
-            ST7735_DrawStringV2(7,10, "/"  ,0xFFE0,2,2);//Print it to the LCD!
-            ST7735_DrawStringV2(9,10, Day ,(State == 5)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
-            ST7735_DrawStringV2(13,10, "/"  ,0xFFE0,2,2);//Print it to the LCD!
-            ST7735_DrawStringV2(15,10, Year,(State == 6)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+            ST7735_DrawStringV2(3,10, Month,(State == 4)? SecondaryColor:PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
+            ST7735_DrawStringV2(7,10, "/"  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
+            ST7735_DrawStringV2(9,10, Day ,(State == 5)? SecondaryColor:PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
+            ST7735_DrawStringV2(13,10, "/"  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
+            ST7735_DrawStringV2(15,10, Year,(State == 6)? SecondaryColor:PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
             Flag =0;
         }
 
@@ -443,11 +448,16 @@ void DateInput(void){
 
     }
 
-    int8_t i;
-    unsigned char timeDateToSetHEX[15]; // Place holder default Date
-    for (i=0; i<15; i++)
-        timeDateToSetHEX[i]=((timeDateToSet[i]/10)*16)+(timeDateToSet[i]%10);
-    I2C1_burstWrite(SLAVE_ADDR, 0, 7, timeDateToSetHEX);
+    if(TimePromptCount<=60)
+    {
+        int8_t i;
+        unsigned char timeDateToSetHEX[15]; // Place holder default Date
+        for (i=0; i<15; i++)
+            timeDateToSetHEX[i]=((timeDateToSet[i]/10)*16)+(timeDateToSet[i]%10);
+        I2C1_burstWrite(SLAVE_ADDR, 0, 7, timeDateToSetHEX);
+    }
+    Output_Clear();
+    TimePromptCount =0;
 }
 
 void AlarmConfigMenu(void)
@@ -490,15 +500,15 @@ void AlarmConfigMenu(void)
             if(Flag)
             {
                 LCDSelect = 1;
-                ST7735_DrawStringV2(3,4, "Alarm 1" ,(State == 0)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
-                circleBres(10, 46, 5,(State == 0)? 0x001F:0x0000);
-                //ST7735_DrawStringV2(3,6, "Set" ,0xFFE0,2,2);//Print it to the LCD!
+                ST7735_DrawStringV2(3,4, "Alarm 1" ,(State == 0)? SecondaryColor:PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
+                circleBres(10, 46, 5,(State == 0)? SecondaryColor:BackgroundColor);
+                //ST7735_DrawStringV2(3,6, "Set" ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
 
-                ST7735_DrawStringV2(3,7, "Alarm 2  " ,(State == 1)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
-                circleBres(10, 75, 5,(State == 1)? 0x001F:0x0000);
+                ST7735_DrawStringV2(3,7, "Alarm 2  " ,(State == 1)? SecondaryColor:PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
+                circleBres(10, 75, 5,(State == 1)? SecondaryColor:BackgroundColor);
 
-                ST7735_DrawStringV2(3,12, "Done" ,(State == 2)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
-                circleBres(10, 125, 5,(State == 2)? 0x001F:0x0000);
+                ST7735_DrawStringV2(3,12, "Done" ,(State == 2)? SecondaryColor:PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
+                circleBres(10, 125, 5,(State == 2)? SecondaryColor:BackgroundColor);
                 Flag = 0;
             }
 
@@ -561,26 +571,44 @@ void Alarm1Config(void)
             if(Flag)
             {
                 LCDSelect = 1;
-                ST7735_DrawStringV2(3,14, "1" ,(State == 0)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+                ST7735_DrawStringV2(3,14, "1" ,(State == 0)? SecondaryColor:PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
                 ST7735_FillRect(21, 55, 4, 80, 0);
-                ST7735_FillRect(21, (135-Alarm1[0]*10), 4, Alarm1[0]*10, (State == 0)? 0x001F:0xFFE0);
+                ST7735_FillRect(21, (135-Alarm1[0]*10), 4, Alarm1[0]*10, (State == 0)? SecondaryColor:PrimaryColor);
 
-                ST7735_DrawStringV2(8,14, "2" ,(State == 1)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+                ST7735_DrawStringV2(8,14, "2" ,(State == 1)? SecondaryColor:PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
                 ST7735_FillRect(50, 55, 4, 80, 0);
-                ST7735_FillRect(50, (135-Alarm1[1]*10), 4, Alarm1[1]*10, (State == 1)? 0x001F:0xFFE0);
+                ST7735_FillRect(50, (135-Alarm1[1]*10), 4, Alarm1[1]*10, (State == 1)? SecondaryColor:PrimaryColor);
 
-                ST7735_DrawStringV2(12,14, "3" ,(State == 2)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+                ST7735_DrawStringV2(12,14, "3" ,(State == 2)? SecondaryColor:PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
                 ST7735_FillRect(75, 55, 4, 80, 0);
-                ST7735_FillRect(75, (135-Alarm1[2]*10), 4, Alarm1[2]*10, (State == 2)? 0x001F:0xFFE0);
+                ST7735_FillRect(75, (135-Alarm1[2]*10), 4, Alarm1[2]*10, (State == 2)? SecondaryColor:PrimaryColor);
 
-                ST7735_DrawStringV2(16,14, "4" ,(State == 3)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+                ST7735_DrawStringV2(16,14, "4" ,(State == 3)? SecondaryColor:PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
                 ST7735_FillRect(100, 55, 4, 80, 0);
-                ST7735_FillRect(100, (135-Alarm1[3]*10), 4, Alarm1[3]*10, (State == 3)? 0x001F:0xFFE0);
+                ST7735_FillRect(100, (135-Alarm1[3]*10), 4, Alarm1[3]*10, (State == 3)? SecondaryColor:PrimaryColor);
 
                 Flag = 0;
             }
 
     }
+
+    uint8_t i,j;
+    uint8_t* addr_pointer;
+    unsigned char MemReadBack[7][8]=0;
+
+    for(j=0;j<7;j++)
+        for(i=0;i<8;i++)
+        {
+            addr_pointer = (CALIBRATION_START +(0x14 * (j))+i);
+            MemReadBack[j][i]= *addr_pointer;
+        }
+    for(i = 0; i<5; i++){MemReadBack[5][i]=Alarm1[i];}
+
+    MemWriteInit();
+    for(j=0;j<7;j++)
+        MemWrite(MemReadBack[j], CALIBRATION_START +(0x14 * j), 8);
+    flashwritefinish();
+
     Output_Clear();
 }
 
@@ -640,26 +668,43 @@ void Alarm2Config(void)
             if(Flag)
             {
                 LCDSelect = 1;
-                ST7735_DrawStringV2(3,14, "1" ,(State == 0)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+                ST7735_DrawStringV2(3,14, "1" ,(State == 0)? SecondaryColor:PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
                 ST7735_FillRect(21, 55, 4, 80, 0);
-                ST7735_FillRect(21, (135-Alarm2[0]*10), 4, Alarm2[0]*10, (State == 0)? 0x001F:0xFFE0);
+                ST7735_FillRect(21, (135-Alarm2[0]*10), 4, Alarm2[0]*10, (State == 0)? SecondaryColor:PrimaryColor);
 
-                ST7735_DrawStringV2(8,14, "2" ,(State == 1)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+                ST7735_DrawStringV2(8,14, "2" ,(State == 1)? SecondaryColor:PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
                 ST7735_FillRect(50, 55, 4, 80, 0);
-                ST7735_FillRect(50, (135-Alarm2[1]*10), 4, Alarm2[1]*10, (State == 1)? 0x001F:0xFFE0);
+                ST7735_FillRect(50, (135-Alarm2[1]*10), 4, Alarm2[1]*10, (State == 1)? SecondaryColor:PrimaryColor);
 
-                ST7735_DrawStringV2(12,14, "3" ,(State == 2)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+                ST7735_DrawStringV2(12,14, "3" ,(State == 2)? SecondaryColor:PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
                 ST7735_FillRect(75, 55, 4, 80, 0);
-                ST7735_FillRect(75, (135-Alarm2[2]*10), 4, Alarm2[2]*10, (State == 2)? 0x001F:0xFFE0);
+                ST7735_FillRect(75, (135-Alarm2[2]*10), 4, Alarm2[2]*10, (State == 2)? SecondaryColor:PrimaryColor);
 
-                ST7735_DrawStringV2(16,14, "4" ,(State == 3)? 0x001F:0xFFE0,2,2);//Print it to the LCD!
+                ST7735_DrawStringV2(16,14, "4" ,(State == 3)? SecondaryColor:PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
                 ST7735_FillRect(100, 55, 4, 80, 0);
-                ST7735_FillRect(100, (135-Alarm2[3]*10), 4, Alarm2[3]*10, (State == 3)? 0x001F:0xFFE0);
+                ST7735_FillRect(100, (135-Alarm2[3]*10), 4, Alarm2[3]*10, (State == 3)? SecondaryColor:PrimaryColor);
 
                 Flag = 0;
             }
 
     }
+    uint8_t i,j;
+    uint8_t* addr_pointer;
+    unsigned char MemReadBack[7][8]=0;
+
+    for(j=0;j<7;j++)
+        for(i=0;i<8;i++)
+        {
+            addr_pointer = (CALIBRATION_START +(0x14 * (j))+i);
+            MemReadBack[j][i]= *addr_pointer;
+        }
+    for(i = 0; i<5; i++){MemReadBack[6][i]=Alarm2[i];}
+
+    MemWriteInit();
+    for(j=0;j<7;j++)
+        MemWrite(MemReadBack[j], CALIBRATION_START +(0x14 * j), 8);
+    flashwritefinish();
+
     Output_Clear();
 }
 
@@ -687,14 +732,14 @@ void AlarmHist(void)
                 Alarms[j][5],
                 Alarms[j][4],
                 Alarms[j][6]);
-        ST7735_DrawStringV2(1,(4+j*2),TimeString,0xFFE0,1,1);
+        ST7735_DrawStringV2(1,(4+j*2),TimeString,PrimaryColor,BackgroundColor,1,1);
 
         sprintf(TimeString,"%s\0",(Alarms[j][7]=='S')?"Speed":"Temp");
-        ST7735_DrawStringV2(3,(4+j*2+1),TimeString,0xFFE0,1,1);
+        ST7735_DrawStringV2(3,(4+j*2+1),TimeString,PrimaryColor,BackgroundColor,1,1);
     }
 
-    ST7735_DrawStringV2(3,14, "Done" ,0x001F,2,2);//Print it to the LCD!
-    circleBres(10, 147, 5,0x001F);
+    ST7735_DrawStringV2(3,14, "Done" ,SecondaryColor,BackgroundColor,2,2);//Print it to the LCD!
+    circleBres(10, 147, 5,SecondaryColor);
     int8_t DoneFlag = 0;
     while(!DoneFlag)
     {
@@ -709,6 +754,17 @@ void AlarmHist(void)
     }
 }
 
+void WarningScreen(void)
+{
+    LCDSelect = 2;
+    ST7735_FillScreen(ST7735_RED);
+    ST7735_DrawStringV2(3,4, "Warning!!!!" ,0x07FF,ST7735_RED,2,2);//Print it to the LCD!
+    ST7735_DrawStringV2(3,6, "Temp > 80" ,0x07FF,ST7735_RED,2,2);//Print it to the LCD!
+    ST7735_DrawStringV2(3,9, "Self " ,0x07FF,ST7735_RED,2,2);//Print it to the LCD!
+    ST7735_DrawStringV2(3,11, "Destruct" ,0x07FF,ST7735_RED,2,2);//Print it to the LCD!
+    ST7735_DrawStringV2(3,13, "Eminent" ,0x07FF,ST7735_RED,2,2);//Print it to the LCD!
+    LCDSelect = 1;
+}
 ////////////////////////////////////////////////////////////
 ///                        Interrupts                    ///
 ///////////////////////////////////////////////////////////
@@ -744,6 +800,8 @@ void T32_INT1_IRQHandler (void)                             //Interrupt Handler 
 {
     TIMER32_1->INTCLR = 1;  //Clear interrupt flag so it does not interrupt again immediately.
     WatchdogInit();
+    if(TimePromptCount !=0)
+        TimePromptCount++;
 
     ADC14->CTL0 |= 1; //start a conversion
     while(!ADC14->IFGR0); // wait until conversion complete
@@ -791,6 +849,7 @@ void T32_INT1_IRQHandler (void)                             //Interrupt Handler 
     I2C1_burstRead(SLAVE_ADDR, 0x11, 2, TempReadback);
     Temp=(TempReadback[0]+((TempReadback[1]>>6)+1)/4)*1.8+32;
 
+    (Temp>80)?               WarningScreen():
     (MeasureScreenCount==0)? MeasurmentDisplay1():
     (MeasureScreenCount==1)? MeasurmentDisplay2():
     (MeasureScreenCount==2)? MeasurmentDisplay3():0;
@@ -809,7 +868,9 @@ void PORT1_IRQHandler(void)
     (MeasureScreenCount>2)?MeasureScreenCount = 0:0;
     Reset = 1;
     P1->IFG = 0; //Clear all flags
-    TIMER32_1->LOAD = 10;
+
+    if(TimePromptCount == 0)
+        TIMER32_1->LOAD = 10;
 
 }
 
