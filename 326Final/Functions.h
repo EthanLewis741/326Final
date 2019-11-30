@@ -10,6 +10,14 @@
 
 #define CALIBRATION_START 0x000200054 // Starting memory address in flash
  // pointer to address in flash for reading back values
+#define C4      261.63
+#define D4      293.66
+#define E4      329.63
+#define F4      349.23
+#define G4      392.00
+#define A4      440.00
+#define B4      493.88
+#define C5      523.25
 
 
 #ifndef FUNCTIONS_H_
@@ -151,6 +159,62 @@ void WatchdogInit(void)
     | 0<<4 //Set to Watchdog mode
     | 1<<3 // Clear Timer
     | WDT_A_CTL_IS_3; /*!< Watchdog clock source /(2^(19)) (00:00:16 at 32.768 kHz) */
+}
+
+////////////////////////////////////////////////////////////
+///                     Buzzer                          ///
+///////////////////////////////////////////////////////////
+void Beep (float PWMperiod, double DutyCycle) // set up pwm for for the trigger
+{
+    P2->DIR |= BIT5 ;                 // P2.5 set TA0.1
+    P2->SEL0 |= BIT5 ;
+    P2->SEL1 &= ~(BIT5 );
+    if(PWMperiod!= 0)
+        PWMperiod = (1/PWMperiod)*32768;
+
+    TIMER_A0->CCR[0] = PWMperiod;            // PWM Period
+    TIMER_A0->CCTL[2] = TIMER_A_CCTLN_OUTMOD_7; // CCR2 reset/set
+    TIMER_A0->CCR[2] = (PWMperiod)*DutyCycle;                 // CCR2 PWM duty cycle
+    TIMER_A0->CTL = TIMER_A_CTL_SSEL__ACLK | // SMCLK
+            TIMER_A_CTL_MC__UP |            // Up mode
+            TIMER_A_CTL_CLR;                // Clear TAR
+}
+
+void play(tune)
+{
+    int j = 0;
+    j = tune;
+    switch(j)
+    {
+    case 1:
+        Beep(C4, .5);
+        break;
+    case 2:
+        Beep(D4, .5);
+        break;
+    case 3:
+        Beep(E4, .5);
+        break;
+    case 4:
+        Beep(F4, .5);
+        break;
+    case 5:
+        Beep(G4, .5);
+        break;
+    case 6:
+        Beep(A4, .5);
+        break;
+    case 7:
+        Beep(B4, .5);
+        break;
+    case 8:
+        Beep(C5, .5);
+        break;
+    default:
+        Beep(0, .5);
+        break;
+    }
+
 }
 
 ////////////////////////////////////////////////////////////

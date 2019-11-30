@@ -15,6 +15,8 @@
 
 #include <msp.h>
 
+
+
 int PrimaryColor = 0xFFE0, SecondaryColor = 0x001F, BackgroundColor = 0x0000;
 #define Radius 6
 unsigned char timeDateToSet[15] = {55, 58, 23, 05, 21, 11, 19, 0}; // Place holder default Date
@@ -70,6 +72,9 @@ int main(void)
 
     TIMER32_1->CONTROL = 0b11100111;
     TIMER32_1->LOAD = 3000000;
+
+    TIMER32_2->CONTROL = 0b11100111;
+    NVIC_EnableIRQ( T32_INT2_IRQn );
 
     NVIC_EnableIRQ(PORT3_IRQn);
     NVIC_SetPriority(PORT3_IRQn, 1);
@@ -763,6 +768,7 @@ void WarningScreen(void)
     ST7735_DrawStringV2(3,9, "Self " ,0x07FF,ST7735_RED,2,2);//Print it to the LCD!
     ST7735_DrawStringV2(3,11, "Destruct" ,0x07FF,ST7735_RED,2,2);//Print it to the LCD!
     ST7735_DrawStringV2(3,13, "Eminent" ,0x07FF,ST7735_RED,2,2);//Print it to the LCD!
+    Output_Clear();
     LCDSelect = 1;
 }
 ////////////////////////////////////////////////////////////
@@ -846,8 +852,10 @@ void T32_INT1_IRQHandler (void)                             //Interrupt Handler 
     sprintf(Day,"%02x",timeDateReadback[4]);
     sprintf(Year,"%02x",timeDateReadback[6]);
 
-    I2C1_burstRead(SLAVE_ADDR, 0x11, 2, TempReadback);
-    Temp=(TempReadback[0]+((TempReadback[1]>>6)+1)/4)*1.8+32;
+//    I2C1_burstRead(SLAVE_ADDR, 0x11, 2, TempReadback);
+//    Temp=(TempReadback[0]+((TempReadback[1]>>6)+1)/4)*1.8+32;
+    if(Temp>80)
+        TIMER32_2->LOAD = 100;
 
     (Temp>80)?               WarningScreen():
     (MeasureScreenCount==0)? MeasurmentDisplay1():
@@ -860,6 +868,45 @@ void T32_INT1_IRQHandler (void)                             //Interrupt Handler 
 
     TIMER32_1->LOAD = 3000000;
 }
+
+void T32_INT2_IRQHandler (void)
+{
+    TIMER32_2->INTCLR = 1;  //Clear interrupt flag so it does not interrupt again immediately.
+    static int8_t tone = 0;
+    #define length 3000000/2
+    switch(tone)
+    {
+    case 0:
+        play(Alarm1[tone]);
+        TIMER32_2->LOAD = length;
+        tone++;
+        break;
+    case 1:
+        play(Alarm1[tone]);
+        TIMER32_2->LOAD = length;
+        tone++;
+        break;
+    case 2:
+        play(Alarm1[tone]);
+        TIMER32_2->LOAD = length;
+        tone++;
+        break;
+    case 3:
+        play(Alarm1[tone]);
+        TIMER32_2->LOAD = length;
+        tone++;
+        break;
+    case 4:
+        play(0);
+        if(Temp>80)
+            TIMER32_2->LOAD = 10;
+        tone=0;
+        break;
+    }
+
+
+}
+
 
 void PORT1_IRQHandler(void)
 {
@@ -876,7 +923,13 @@ void PORT1_IRQHandler(void)
 
 void PORT3_IRQHandler(void)
 {
-    MemShift(timeDateReadback, 'S');
+    static int8_t Testytest =0;
+    Testytest= !Testytest;
+    if(Testytest)
+        Temp= 85;
+    else
+        Temp = 70;
+    SysTick_delay(5);
     P3->IFG = 0; //Clear all flags
     //while(1);
 
