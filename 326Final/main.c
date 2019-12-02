@@ -44,9 +44,13 @@ int8_t Reset = 1;
 int8_t TimePromptCount=0;
 
 int main(void)
-{
+ {
     /* Stop Watchdog  */
     MAP_WDT_A_holdTimer();
+    P8->SEL0 &= ~ (BIT6);
+    P8->SEL1 &= ~ (BIT6);                      // configure P9.2 (D/C), P9.3 (Reset), and P9.4 (TFT_CS) as GPIO
+    P8->DIR |=    (BIT6);
+    P8->OUT |=    (BIT6);
 
     P9->SEL0 &= ~ (BIT4|BIT6);
     P9->SEL1 &= ~ (BIT4|BIT6);                      // configure P9.2 (D/C), P9.3 (Reset), and P9.4 (TFT_CS) as GPIO
@@ -97,6 +101,16 @@ int main(void)
 
     I2C1_burstRead(SLAVE_ADDR, 0, 7, timeDateReadback);
     P3->IE      |=  BIT7;
+
+    send16BitData(0x09, 0xFF); //BCD mode
+     send16BitData(0x0A, 0x01); // set intensity
+     send16BitData(0x0B, 0x01); // Scan Limit
+     send16BitData(0x0C, 0x01); // turn on chip
+
+//     send16BitData(0x01, 0x01);
+//     send16BitData(0x02, 0x02);
+//     send16BitData(0x03, 0x03);
+//     send16BitData(0x04, 0x04);
 
     while(1)
     {
@@ -269,57 +283,46 @@ void MeasurmentDisplay3(void)
 {
     LCDSelect = 2;
 
-    if(Reset)
-    {
-        Output_Clear();
-        ST7735_FillRect(64, 110, 2, 70, PrimaryColor);
-        ST7735_FillRect(0, 110, 128, 2, PrimaryColor);
-        ST7735_DrawStringV2(7,4, ":"  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
-        ST7735_DrawStringV2(13,4, ":"  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
-        ST7735_DrawStringV2(7,8, "/"  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
-        ST7735_DrawStringV2(13,8, "/"  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
-        ST7735_DrawStringV2(2,14, "MPH" ,PrimaryColor,BackgroundColor,2,2);
-        ST7735_DrawStringV2(15,14, 167 ,PrimaryColor,BackgroundColor,2,2);
-        ST7735_DrawStringV2(16,14, "3" ,PrimaryColor,BackgroundColor,2,2);
+        if(Reset)
+        {
+            Output_Clear();
+            ST7735_FillRect(64, 110, 2, 70, PrimaryColor);
+            ST7735_FillRect(0, 110, 128, 2, PrimaryColor);
+            ST7735_DrawStringV2(4,12, ":"  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
+            ST7735_DrawStringV2(2,14, ":"  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
+            ST7735_DrawStringV2(13,14, "MPH" ,PrimaryColor,BackgroundColor,2,2);
+            ST7735_DrawStringV2(6,8, "o" ,PrimaryColor,BackgroundColor,2,2);
+            ST7735_DrawStringV2(8,8, "F" ,PrimaryColor,BackgroundColor,3,3);
 
 
-    }
+        }
 
 
-    //Time
-    if(strcmp(HourOld, Hour) || Reset)
-        ST7735_DrawStringV2(3,4, Hour ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
-    if(strcmp(MinOld, Min) || Reset)
-        ST7735_DrawStringV2(9,4, Min  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
-    if(strcmp(SecOld, Sec) || Reset)
-        ST7735_DrawStringV2(15,4, Sec  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
-    if(strcmp(DoWOld, DoW) || Reset)
-        ST7735_DrawStringV2(3,6, DoW  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
-    if(strcmp(MonthOld, Month) || Reset)
-        ST7735_DrawStringV2(3,8, Month,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
-    if(strcmp(DayOld, Day) || Reset)
-        ST7735_DrawStringV2(9,8, Day ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
-    if(strcmp(YearOld, Year) || Reset)
-        ST7735_DrawStringV2(15,8, Year,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
-
-    //Speed
-    //Speed++;
-    sprintf(SpeedS,"%03.0f\0", Speed);
-    if(strcmp(SpeedSOld, SpeedS) || Reset)
-        ST7735_DrawStringV2(2,12, SpeedS ,PrimaryColor,BackgroundColor,2,2);
+        //Time
+        if(strcmp(HourOld, Hour) || Reset)
+            ST7735_DrawStringV2(0,12, Hour ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
+        if(strcmp(MinOld, Min) || Reset)
+            ST7735_DrawStringV2(5,12, Min  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
+        if(strcmp(SecOld, Sec) || Reset)
+            ST7735_DrawStringV2(4,14, Sec  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
 
 
-    //Temp
-    sprintf(TempS,"%03.0f\0", Temp);
-    if(strcmp(TempSOld, TempS)|| Reset)
-        ST7735_DrawStringV2(13,12, TempS ,PrimaryColor,BackgroundColor,2,2);
+        //Speed
+        //Speed++;
+        sprintf(SpeedS,"%03.1f\0", Speed);
+        if(strcmp(SpeedSOld, SpeedS) || Reset)
+            ST7735_DrawStringV2(13,12, SpeedS ,PrimaryColor,BackgroundColor,2,2);
 
-    strcpy(SecOld, Sec); strcpy(HourOld, Hour); strcpy(MinOld, Min); strcpy(DoWOld, DoW); strcpy(MonthOld, Month); strcpy(DayOld, Day); strcpy(YearOld, Year);
-    strcpy(SpeedSOld, SpeedS);
-    strcpy(TempSOld, TempS);
 
-    LCDSelect = 1;
-    Reset = 0;
+        //Temp
+        sprintf(TempS,"%03.0f\0", Temp);
+        if(strcmp(TempSOld, TempS)|| Reset)
+            ST7735_DrawStringV2(6,5, TempS ,PrimaryColor,BackgroundColor,3,3);
+
+
+
+        LCDSelect = 1;
+        Reset = 0;
 }
 
 void DateInput(void){
@@ -768,7 +771,7 @@ void WarningScreen(void)
     ST7735_DrawStringV2(3,9, "Self " ,0x07FF,ST7735_RED,2,2);//Print it to the LCD!
     ST7735_DrawStringV2(3,11, "Destruct" ,0x07FF,ST7735_RED,2,2);//Print it to the LCD!
     ST7735_DrawStringV2(3,13, "Eminent" ,0x07FF,ST7735_RED,2,2);//Print it to the LCD!
-    Output_Clear();
+    Reset = 1;
     LCDSelect = 1;
 }
 ////////////////////////////////////////////////////////////
@@ -814,12 +817,12 @@ void T32_INT1_IRQHandler (void)                             //Interrupt Handler 
     int result = ADC14->MEM[5]; // immediately store value in a variable
     //result = 6001;
     //(result>=6000)?BacklightPWM(10, 1):
-    (result>=5000)?BacklightPWM(10, .8):
-    (result>=4000 && result<5000)?BacklightPWM(10, .7):
-    (result>=3000 && result<4000)?BacklightPWM(10, .6):
-    (result>=2000 && result<3000)?BacklightPWM(10, .5):
-    (result>=1000 && result<2000)?BacklightPWM(10, .4):
-    (result<1000)?BacklightPWM(10, 1):0;
+    (result>=5000)?BacklightPWM(10, 0):
+    (result>=4000 && result<5000)?BacklightPWM(10, .4):
+    (result>=3000 && result<4000)?BacklightPWM(10, .5):
+    (result>=2000 && result<3000)?BacklightPWM(10, .6):
+    (result>=1000 && result<2000)?BacklightPWM(10, .7):
+    (result<1000)?BacklightPWM(10, .8):0;
 
     SpeedAvg/=SpeedCount;
     SpeedAvg/=32768;
@@ -832,6 +835,9 @@ void T32_INT1_IRQHandler (void)                             //Interrupt Handler 
 
     SpeedAvg = 0;
     SpeedCount = 0;
+
+    send16BitData(0x01, (int) Speed%10);
+    send16BitData(0x02, ( (int) Speed/10)%10);
 
     I2C1_burstRead(SLAVE_ADDR, 0, 7, timeDateReadback);
 
@@ -917,7 +923,12 @@ void PORT1_IRQHandler(void)
     P1->IFG = 0; //Clear all flags
 
     if(TimePromptCount == 0)
+    {
         TIMER32_1->LOAD = 10;
+        LCDSelect = 2;
+        Output_Clear();
+    }
+
 
 }
 

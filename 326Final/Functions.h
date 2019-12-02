@@ -218,6 +218,42 @@ void play(tune)
 }
 
 ////////////////////////////////////////////////////////////
+///                    7 seg Stuff                       ///
+///////////////////////////////////////////////////////////
+void send16BitData(uint8_t addr, uint8_t value)
+{
+    __disable_irq;
+    static int8_t Init =1;
+    if(Init)
+    {
+        P8->SEL0 &= ~ (BIT6);
+        P8->SEL1 &= ~ (BIT6);                      // configure P9.2 (D/C), P9.3 (Reset), and P9.4 (TFT_CS) as GPIO
+        P8->DIR |=    (BIT6);
+        Init = 0;
+    }
+    P9->OUT |=(BIT4|BIT6);
+
+    EUSCI_A3->BRW = 6;
+    P8->OUT &= ~BIT6; // CS LOW
+
+    while(!(EUSCI_A3->IFG & 2)); /*wait until ready to transmit */
+    EUSCI_A3->TXBUF = addr;
+
+    while(!(EUSCI_A3->IFG & 2)); /*wait until ready to transmit */
+    EUSCI_A3->TXBUF = value;
+
+    // may need another delay here – need to toggle CS
+    __delay_cycles(200);
+    P8->OUT |= BIT6; // CS HIGH
+
+    __delay_cycles(1000);
+    SysTick_delay(1);
+    EUSCI_A3->BRW = 0;
+    __enable_irq;
+    // another delay
+}
+
+////////////////////////////////////////////////////////////
 ///                    LCD Stuff                        ///
 ///////////////////////////////////////////////////////////
 
