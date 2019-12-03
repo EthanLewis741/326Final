@@ -115,6 +115,26 @@ void PinInit (void)
     P6->DIR     &=~ BIT6;
     P6->REN     |=  BIT6;
     P6->OUT     &=~ BIT6; //Input, Pull Down Resistor
+
+    //Switch
+    P6->SEL0    &=~ (BIT0|BIT1); // Setup the P1.1 on the Launchpad as Input, Pull Up Resistor
+    P6->SEL1    &=~ (BIT0|BIT1);
+    P6->DIR     &=~ (BIT0|BIT1);
+    P6->REN     |=  (BIT0|BIT1);
+    P6->OUT     |=  (BIT0|BIT1); //Input, Pull Up Resistor
+
+
+    //Seven Seg
+    P8->SEL0 &= ~ (BIT6);
+    P8->SEL1 &= ~ (BIT6);                      // configure P9.2 (D/C), P9.3 (Reset), and P9.4 (TFT_CS) as GPIO
+    P8->DIR |=    (BIT6);
+    P8->OUT |=    (BIT6);
+
+    //LED
+    P3->SEL0 &= ~ (BIT2|BIT3);
+    P3->SEL1 &= ~ (BIT2|BIT3);                      // configure P9.2 (D/C), P9.3 (Reset), and P9.4 (TFT_CS) as GPIO
+    P3->DIR |=    (BIT2|BIT3);
+    P3->OUT &= ~    (BIT2|BIT3);
 }
 
 void adcsetup(void)
@@ -138,7 +158,7 @@ void SpeedInit (void) // set up timer A1.2 capture
 
 
     TIMER_A1->CTL |= TIMER_A_CTL_TASSEL_1 | // Use Aclk as clock source,
-    TIMER_A_CTL_MC_2| // Start timer in continuous mode
+    TIMER_A_CTL_MC_1| // Start timer in continuous mode
     TIMER_A_CTL_CLR; // clear TA0R
     //(0x0214)
     TIMER_A1->CCTL[2] |= TIMER_A_CCTLN_CM_1 | // Capture rising and falling edge,
@@ -169,10 +189,19 @@ void Beep (float PWMperiod, double DutyCycle) // set up pwm for for the trigger
     P2->DIR |= BIT5 ;                 // P2.5 set TA0.1
     P2->SEL0 |= BIT5 ;
     P2->SEL1 &= ~(BIT5 );
+    P2->OUT |=   BIT5;
     if(PWMperiod!= 0)
+    {
         PWMperiod = (1/PWMperiod)*32768;
+        TIMER_A0->CCR[0] = PWMperiod;
+    }
+    else
+    {                       // make P9.2 (D/C), P9.3 (Reset), and P9.4 (TFT_CS) out
+        P2->OUT &= ~  BIT5;
+        TIMER_A0->CCR[0] = 100;
+    }
 
-    TIMER_A0->CCR[0] = PWMperiod;            // PWM Period
+             // PWM Period
     TIMER_A0->CCTL[2] = TIMER_A_CCTLN_OUTMOD_7; // CCR2 reset/set
     TIMER_A0->CCR[2] = (PWMperiod)*DutyCycle;                 // CCR2 PWM duty cycle
     TIMER_A0->CTL = TIMER_A_CTL_SSEL__ACLK | // SMCLK
@@ -338,9 +367,48 @@ uint32_t ST7735_DrawStringV2(uint16_t x, uint16_t y, char *pt, int16_t textColor
 }
 
 ////////////////////////////////////////////////////////////
-///                    Rotary Encoder                    ///
+///                    Ultra Sonic                      ///
 ///////////////////////////////////////////////////////////
 
+void UltraSonicPwmInit (float PWMperiod, double DutyCycle) //Set up the pulse to trigger for the Ultra sonic
+{
+    P7->DIR |= BIT5 ;                 // P2.5 to timerA0.2
+    P7->SEL0 |= BIT5 ;
+    P7->SEL1 &= ~(BIT5 );
+    PWMperiod = PWMperiod*32.768;
+
+    TIMER_A1->CTL |= TIMER_A_CTL_TASSEL_1 | // Use Aclk as clock source,
+    TIMER_A_CTL_MC_1| // Start timer in continuous mode
+    TIMER_A_CTL_CLR; // clear TA0R
+
+    TIMER_A1->CCR[0] = PWMperiod;            // PWM Period
+    TIMER_A1->CCTL[3] = TIMER_A_CCTLN_OUTMOD_7; // CCR2 reset/set
+    TIMER_A1->CCR[3] = (PWMperiod)*DutyCycle;   // CCR2 PWM duty cycle
+}
+
+
+void UltraSonicCapInit (void) // Initiate capture for the Echo
+{
+    P2->SEL0 |= BIT4; // TA2.CCI2A input capture pin, second function
+    P2->SEL1 &= ~ BIT4; // TA2.CCI2A input capture pin, second function
+    P2->DIR &= ~ BIT4;
+
+
+    TIMER_A0->CTL = TIMER_A_CTL_SSEL__ACLK | // SMCLK
+            TIMER_A_CTL_MC__CONTINUOUS |            // Up mode
+            TIMER_A_CTL_CLR;
+    //(0x0214)
+    TIMER_A0->CCTL[1] |= TIMER_A_CCTLN_CM_3 | // Capture rising and falling edge,
+            TIMER_A_CCTLN_CCIS_0 | // Use CCI2A
+            TIMER_A_CCTLN_CCIE | // Enable capture interrupt
+            TIMER_A_CCTLN_CAP | // Enable capture mode,
+            TIMER_A_CCTLN_SCS; // Synchronous capture
+    //(0x4910)
+
+}
+////////////////////////////////////////////////////////////
+///                    Rotary Encoder                    ///
+///////////////////////////////////////////////////////////
 
 void TimerA_Capture_Init (void) // set up timer A2.1 capture
 {

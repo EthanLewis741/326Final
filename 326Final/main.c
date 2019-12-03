@@ -39,6 +39,12 @@ volatile char SpeedS[5], SpeedSOld[5];
 volatile float Temp= 70;
 volatile char TempS[5], TempSOld[5];
 
+volatile  float distance ;
+volatile unsigned int period;
+volatile  float lastdistance = 0;
+unsigned int distanceAvg = 0, distanceCount;
+
+
 int8_t MeasureScreenCount = 1;
 int8_t Reset = 1;
 int8_t TimePromptCount=0;
@@ -47,10 +53,7 @@ int main(void)
  {
     /* Stop Watchdog  */
     MAP_WDT_A_holdTimer();
-    P8->SEL0 &= ~ (BIT6);
-    P8->SEL1 &= ~ (BIT6);                      // configure P9.2 (D/C), P9.3 (Reset), and P9.4 (TFT_CS) as GPIO
-    P8->DIR |=    (BIT6);
-    P8->OUT |=    (BIT6);
+
 
     P9->SEL0 &= ~ (BIT4|BIT6);
     P9->SEL1 &= ~ (BIT4|BIT6);                      // configure P9.2 (D/C), P9.3 (Reset), and P9.4 (TFT_CS) as GPIO
@@ -70,6 +73,8 @@ int main(void)
     SpeedInit();
     PinInit();
     adcsetup();
+    UltraSonicCapInit();
+    UltraSonicPwmInit(100, .1);
     WatchdogInit();
     I2C1_init(); // Initiate the I2C communication for the RTC
 
@@ -88,6 +93,9 @@ int main(void)
 
     NVIC_EnableIRQ (TA1_N_IRQn); // enable capture interrupt
     NVIC_SetPriority(TA1_N_IRQn, 30);
+
+    NVIC_EnableIRQ (TA0_N_IRQn); // enable capture interrupt
+    NVIC_SetPriority(TA0_N_IRQn, 50);
 
     NVIC_EnableIRQ( T32_INT1_IRQn );
     NVIC_SetPriority(T32_INT1_IRQn, 20);
@@ -778,6 +786,24 @@ void WarningScreen(void)
 ///                        Interrupts                    ///
 ///////////////////////////////////////////////////////////
 
+void TA0_N_IRQHandler(void) // Timer A0 interrupt service routine
+{
+    if(!(TIMER_A0->CCTL[1] & TIMER_A_CCTLN_CCI)) // if pin is low, clear the clock
+        TIMER_A0->CTL |= TIMER_A_CTL_CLR;
+    else
+        period = TIMER_A0->R; // if high save the clock value
+
+    lastdistance = distance; // save the previous measurement
+    distance = (period*32.768)/148; // convert the period to the distance
+
+    distanceAvg += distance;
+    distanceCount++;
+//        distance = lastdistance;
+
+
+    TIMER_A0->CCTL[1] &= ~(TIMER_A_CCTLN_CCIFG); // Clear the interrupt flag
+}
+
 void TA1_N_IRQHandler(void) // Timer A2 interrupt service routine
 {
     SpeedAvg += TIMER_A1 -> CCR[2];//OnFlag holds the data for the hall sensor
@@ -808,6 +834,21 @@ void TA2_N_IRQHandler(void) // Timer A2 interrupt Rotary Encoder
 void T32_INT1_IRQHandler (void)                             //Interrupt Handler for Timer32 1.
 {
     TIMER32_1->INTCLR = 1;  //Clear interrupt flag so it does not interrupt again immediately.
+
+    if(!(P6->IN & BIT0))
+    {
+        P3->OUT ^= BIT2;
+        P3->OUT &=~ BIT3;
+    }
+    else if (!(P6->IN & BIT1))
+    {
+        P3->OUT ^= BIT3;
+        P3->OUT &=~ BIT2;
+    }
+    else
+        P3->OUT &=~ (BIT2|BIT3);
+
+
     WatchdogInit();
     if(TimePromptCount !=0)
         TimePromptCount++;
@@ -860,8 +901,14 @@ void T32_INT1_IRQHandler (void)                             //Interrupt Handler 
 
 //    I2C1_burstRead(SLAVE_ADDR, 0x11, 2, TempReadback);
 //    Temp=(TempReadback[0]+((TempReadback[1]>>6)+1)/4)*1.8+32;
-    if(Temp>80)
+
+    distanceAvg/=distanceCount;
+    if(distanceAvg<5)
+        P3->OUT ^= (BIT2|BIT3);
+    if(Temp>80 || distanceAvg<5)
         TIMER32_2->LOAD = 100;
+    distanceAvg=0;
+    distanceCount=0;
 
     (Temp>80)?               WarningScreen():
     (MeasureScreenCount==0)? MeasurmentDisplay1():
@@ -880,35 +927,73 @@ void T32_INT2_IRQHandler (void)
     TIMER32_2->INTCLR = 1;  //Clear interrupt flag so it does not interrupt again immediately.
     static int8_t tone = 0;
     #define length 3000000/2
-    switch(tone)
+
+
+    if(Temp>80)
     {
-    case 0:
-        play(Alarm1[tone]);
-        TIMER32_2->LOAD = length;
-        tone++;
-        break;
-    case 1:
-        play(Alarm1[tone]);
-        TIMER32_2->LOAD = length;
-        tone++;
-        break;
-    case 2:
-        play(Alarm1[tone]);
-        TIMER32_2->LOAD = length;
-        tone++;
-        break;
-    case 3:
-        play(Alarm1[tone]);
-        TIMER32_2->LOAD = length;
-        tone++;
-        break;
-    case 4:
-        play(0);
-        if(Temp>80)
-            TIMER32_2->LOAD = 10;
-        tone=0;
-        break;
+        switch(tone)
+        {
+        case 0:
+            play(Alarm1[tone]);
+            TIMER32_2->LOAD = length;
+            tone++;
+            break;
+        case 1:
+            play(Alarm1[tone]);
+            TIMER32_2->LOAD = length;
+            tone++;
+            break;
+        case 2:
+            play(Alarm1[tone]);
+            TIMER32_2->LOAD = length;
+            tone++;
+            break;
+        case 3:
+            play(Alarm1[tone]);
+            TIMER32_2->LOAD = length;
+            tone++;
+            break;
+        case 4:
+            play(0);
+            if(Temp>80)
+                TIMER32_2->LOAD = 10;
+            tone=0;
+            break;
+        }
     }
+    else
+    {
+        switch(tone)
+        {
+        case 0:
+            play(Alarm2[tone]);
+            TIMER32_2->LOAD = length;
+            tone++;
+            break;
+        case 1:
+            play(Alarm2[tone]);
+            TIMER32_2->LOAD = length;
+            tone++;
+            break;
+        case 2:
+            play(Alarm2[tone]);
+            TIMER32_2->LOAD = length;
+            tone++;
+            break;
+        case 3:
+            play(Alarm2[tone]);
+            TIMER32_2->LOAD = length;
+            tone++;
+            break;
+        case 4:
+            play(0);
+            if(distance<5)
+                TIMER32_2->LOAD = 10;
+            tone=0;
+            break;
+        }
+    }
+
 
 
 }
@@ -934,13 +1019,13 @@ void PORT1_IRQHandler(void)
 
 void PORT3_IRQHandler(void)
 {
-    static int8_t Testytest =0;
-    Testytest= !Testytest;
-    if(Testytest)
-        Temp= 85;
-    else
-        Temp = 70;
-    SysTick_delay(5);
+//    static int8_t Testytest =0;
+//    Testytest= !Testytest;
+//    if(Testytest)
+//        Temp= 85;
+//    else
+//        Temp = 70;
+//    SysTick_delay(5);
     P3->IFG = 0; //Clear all flags
     //while(1);
 
