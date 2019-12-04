@@ -150,26 +150,21 @@ void adcsetup(void)
     ADC14->CTL0 |= 2; //enable ADC after configuration
 }
 
-void SpeedInit (void) // set up timer A1.2 capture
+void SpeedInit (void) // set up timer A2.4 capture
 {
-    P7->SEL0    |=  BIT6; // TA0.CCI2A input capture pin, second function
-    P7->SEL1    &=~ BIT6; // TA0.CCI2A input capture pin, second function
-    P7->DIR     &=~ BIT6;
+    P6->SEL0 |= BIT7; // TA0.CCI2A input capture pin, second function
+    P6->SEL1 &= ~ BIT7; // TA0.CCI2A input capture pin, second function
+    P6->DIR &= ~ BIT7;
 
-
-    TIMER_A1->CTL |= TIMER_A_CTL_TASSEL_1 | // Use Aclk as clock source,
-    TIMER_A_CTL_MC_1| // Start timer in continuous mode
+    TIMER_A2->CTL |= TIMER_A_CTL_TASSEL_1 | // Use SMCLK as clock source,
+    TIMER_A_CTL_MC_2| // Start timer in continuous mode
     TIMER_A_CTL_CLR; // clear TA0R
     //(0x0214)
-    TIMER_A1->CCTL[2] |= TIMER_A_CCTLN_CM_1 | // Capture rising and falling edge,
+    TIMER_A2->CCTL[4] |= TIMER_A_CCTLN_CM_2 | // Capture rising and falling edge,
     TIMER_A_CCTLN_CCIS_0 | // Use CCI2A
     TIMER_A_CCTLN_CCIE | // Enable capture interrupt
     TIMER_A_CCTLN_CAP | // Enable capture mode,
     TIMER_A_CCTLN_SCS; // Synchronous capture
-    //(0x4910)
-
-
-
 }
 
 void WatchdogInit(void)
@@ -434,7 +429,7 @@ void TimerA_Capture_Init (void) // set up timer A2.1 capture
     TIMER_A_CCTLN_SCS; // Synchronous capture
     //(0x4910)
 
-    NVIC_EnableIRQ (TA2_N_IRQn); // enable capture interrupt
+
 }
 
 uint8_t RotaryButton()
@@ -464,6 +459,53 @@ uint8_t RotaryButton()
     }
     __delay_cycles(2);
     return 0;
+}
+
+////////////////////////////////////////////////////////////
+///                    Dial Control                   ///
+///////////////////////////////////////////////////////////
+
+void BipolarStep(int Direction)
+{
+    static int Init = 1;
+    if (Init) // initialize pins
+    {
+        P4->DIR |=      (BIT1|BIT2|BIT3|BIT4);
+        P4->SEL0 &= ~   (BIT1|BIT2|BIT3|BIT4);
+        P4->SEL1 &= ~   (BIT1|BIT2|BIT3|BIT4);
+        Init = 0;
+    }
+
+    static int i = 0;
+    switch(i){ // move through the cycle
+    case 0:
+        BipolarStepperMotor(0,0,1,1);//1010//0011
+        i+=Direction;
+        if(i==-1) i = 3;
+        break;
+    case 1:
+        BipolarStepperMotor(0,1,1,0);//0110
+        i+=Direction;
+        break;
+    case 2:
+        BipolarStepperMotor(1,1,0,0);//0101//1100
+        i+=Direction;
+        break;
+    case 3:
+        BipolarStepperMotor(1,0,0,1);//1001
+        i+=Direction;
+        if(i==4) i = 0;
+        break;
+    }
+
+}
+
+void BipolarStepperMotor(int IN1, int IN2, int IN3, int IN4) // Which pins to pulse
+{
+    if(IN4) P4->OUT |= BIT4; else P3->OUT &=~ BIT4;
+    if(IN3) P4->OUT |= BIT3; else P3->OUT &=~ BIT3;
+    if(IN2) P4->OUT |= BIT2; else P4->OUT &=~ BIT2;
+    if(IN1) P4->OUT |= BIT1; else P4->OUT &=~ BIT1;
 }
 
 ////////////////////////////////////////////////////////////

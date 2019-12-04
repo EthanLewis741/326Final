@@ -36,7 +36,10 @@ volatile float Speed=0;
 volatile float SpeedAvg, SpeedCount;
 volatile char SpeedS[5], SpeedSOld[5];
 
-volatile float Temp= 70;
+volatile int Steps=0, Direction=1;
+volatile int angle = 0;
+
+volatile float Temp;
 volatile char TempS[5], TempSOld[5];
 
 volatile  float distance ;
@@ -91,8 +94,11 @@ int main(void)
     NVIC_EnableIRQ(PORT1_IRQn);
     NVIC_SetPriority(PORT1_IRQn, 10);
 
-    NVIC_EnableIRQ (TA1_N_IRQn); // enable capture interrupt
-    NVIC_SetPriority(TA1_N_IRQn, 30);
+    NVIC_EnableIRQ (TA2_N_IRQn); // enable capture interrupt
+    NVIC_SetPriority(TA2_N_IRQn, 2);
+
+    NVIC_EnableIRQ (TA3_N_IRQn);
+    NVIC_SetPriority(TA3_N_IRQn, 5);
 
     NVIC_EnableIRQ (TA0_N_IRQn); // enable capture interrupt
     NVIC_SetPriority(TA0_N_IRQn, 50);
@@ -101,6 +107,13 @@ int main(void)
     NVIC_SetPriority(T32_INT1_IRQn, 20);
 
     __enable_irq ( ); // enable global interrupts
+
+    BacklightPWM(10, .5);
+
+    Steps = 750;
+    TIMER_A3->CCR[2] = 20*32;
+    TIMER_A3->CCTL[2] |= TIMER_A_CCTLN_CCIE;     //enable interrupts
+    //BipolarStep(-1, 250, 7); //Run the stepper motor for 250 steps to be sure it's at 0
 
     uint8_t i, *addr_pointer;
     for(i = 0; i<5; i++){addr_pointer = CALIBRATION_START +(0x14*5)+i; Alarm1[i]=*addr_pointer;}
@@ -271,7 +284,7 @@ void MeasurmentDisplay2(void)
 
     //Speed
     //Speed++;
-    sprintf(SpeedS,"%03.1f\0", Speed);
+    sprintf(SpeedS,"%.1f \0", Speed);
     if(strcmp(SpeedSOld, SpeedS) || Reset)
         ST7735_DrawStringV2(6,5, SpeedS ,PrimaryColor,BackgroundColor,3,3);
 
@@ -296,7 +309,7 @@ void MeasurmentDisplay3(void)
             Output_Clear();
             ST7735_FillRect(64, 110, 2, 70, PrimaryColor);
             ST7735_FillRect(0, 110, 128, 2, PrimaryColor);
-            ST7735_DrawStringV2(4,12, ":"  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
+            ST7735_DrawStringV2(3,12, ":"  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
             ST7735_DrawStringV2(2,14, ":"  ,PrimaryColor,BackgroundColor,2,2);//Print it to the LCD!
             ST7735_DrawStringV2(13,14, "MPH" ,PrimaryColor,BackgroundColor,2,2);
             ST7735_DrawStringV2(6,8, "o" ,PrimaryColor,BackgroundColor,2,2);
@@ -317,13 +330,13 @@ void MeasurmentDisplay3(void)
 
         //Speed
         //Speed++;
-        sprintf(SpeedS,"%03.1f\0", Speed);
+        sprintf(SpeedS,"%03.0f\0", Speed);
         if(strcmp(SpeedSOld, SpeedS) || Reset)
             ST7735_DrawStringV2(13,12, SpeedS ,PrimaryColor,BackgroundColor,2,2);
 
 
         //Temp
-        sprintf(TempS,"%03.0f\0", Temp);
+        sprintf(TempS,"%.1f \0", Temp);
         if(strcmp(TempSOld, TempS)|| Reset)
             ST7735_DrawStringV2(6,5, TempS ,PrimaryColor,BackgroundColor,3,3);
 
@@ -804,31 +817,41 @@ void TA0_N_IRQHandler(void) // Timer A0 interrupt service routine
     TIMER_A0->CCTL[1] &= ~(TIMER_A_CCTLN_CCIFG); // Clear the interrupt flag
 }
 
-void TA1_N_IRQHandler(void) // Timer A2 interrupt service routine
+void TA3_N_IRQHandler(void) // Timer A0 interrupt service routine
 {
-    SpeedAvg += TIMER_A1 -> CCR[2];//OnFlag holds the data for the hall sensor
-    TIMER_A1->CTL |= TIMER_A_CTL_CLR;
-
-    SpeedCount++;//OnFlag continuously reads in, holding the values of j until
-    TIMER_A1->CCTL[2] &= ~(TIMER_A_CCTLN_CCIFG); // Clear the interrupt flag
+    BipolarStep(Direction);
+    Steps--;
+    if(Steps ==0)
+        TIMER_A3->CCTL[2] &= ~TIMER_A_CCTLN_CCIE;     //enable interrupts
+    TIMER_A3->CCTL[2] &= ~(TIMER_A_CCTLN_CCIFG); // Clear the interrupt flag
 }
+
 
 void TA2_N_IRQHandler(void) // Timer A2 interrupt Rotary Encoder
 {
     SysTick_delay(1);
-    //__delay_cycles(200);
     int8_t DT = (P5->IN & BIT7)>>7 ;
     int8_t Clock = (P3->IN & BIT0)>>0;
+    if(TIMER_A2->CCTL[2] & TIMER_A_CCTLN_CCIFG)
+    {
 
-    if(DT == Clock)
-        CCWcount++;
+
+        if(DT == Clock)
+            CCWcount++;
+        else
+            CWcount++;
+        SysTick_delay(10);
+        TIMER_A2->CCTL[2] &= ~(TIMER_A_CCTLN_CCIFG); // Clear the interrupt flag
+    }
     else
-        CWcount++;
+    {
+        SpeedAvg += TIMER_A2 -> R;//OnFlag holds the data for the hall sensor
+        TIMER_A2->CTL |= TIMER_A_CTL_CLR;
 
-//    __delay_cycles(20);
-    SysTick_delay(10);
+        SpeedCount++;//OnFlag continuously reads in, holding the values of j until
+        TIMER_A2->CCTL[4] &= ~(TIMER_A_CCTLN_CCIFG); // Clear the interrupt flag
+    }
 
-    TIMER_A2->CCTL[2] &= ~(TIMER_A_CCTLN_CCIFG); // Clear the interrupt flag
 }
 
 void T32_INT1_IRQHandler (void)                             //Interrupt Handler for Timer32 1.
@@ -899,8 +922,8 @@ void T32_INT1_IRQHandler (void)                             //Interrupt Handler 
     sprintf(Day,"%02x",timeDateReadback[4]);
     sprintf(Year,"%02x",timeDateReadback[6]);
 
-//    I2C1_burstRead(SLAVE_ADDR, 0x11, 2, TempReadback);
-//    Temp=(TempReadback[0]+((TempReadback[1]>>6)+1)/4)*1.8+32;
+    I2C1_burstRead(SLAVE_ADDR, 0x11, 2, TempReadback);
+    Temp=(TempReadback[0]+((TempReadback[1]>>6)+1)/4)*1.8+32;
 
     distanceAvg/=distanceCount;
     if(distanceAvg<5)
@@ -914,6 +937,22 @@ void T32_INT1_IRQHandler (void)                             //Interrupt Handler 
     (MeasureScreenCount==0)? MeasurmentDisplay1():
     (MeasureScreenCount==1)? MeasurmentDisplay2():
     (MeasureScreenCount==2)? MeasurmentDisplay3():0;
+    uint8_t DialSpeed = (Speed/120)*180;
+
+    if (DialSpeed > angle) // if the result is greater than the angle we're at
+    {
+        Direction = -1;
+        Steps = (DialSpeed-angle);
+        TIMER_A3->CCTL[2] |= TIMER_A_CCTLN_CCIE;     //enable interrupts
+        angle = DialSpeed; // set the new angle
+    }
+    else if (DialSpeed < angle) // if the result is less than the angle we're at
+    {
+        Direction = 1;
+        Steps = (angle-DialSpeed);
+        TIMER_A3->CCTL[2] |= TIMER_A_CCTLN_CCIE;     //enable interrupts
+        angle = DialSpeed; // set the new angle
+    }
 
     strcpy(SecOld, Sec); strcpy(HourOld, Hour); strcpy(MinOld, Min); strcpy(DoWOld, DoW); strcpy(MonthOld, Month); strcpy(DayOld, Day); strcpy(YearOld, Year);
     strcpy(SpeedSOld, SpeedS);
