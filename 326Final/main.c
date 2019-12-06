@@ -36,7 +36,7 @@ volatile float Speed=0;
 volatile float SpeedAvg, SpeedCount;
 volatile char SpeedS[5], SpeedSOld[5];
 
-volatile int Steps=0, Direction=1;
+volatile int Steps=0, Direction=1, DialSpeed = 0;
 volatile int angle = 0;
 
 volatile float Temp;
@@ -53,7 +53,7 @@ int8_t Reset = 1;
 int8_t TimePromptCount=0;
 
 int main(void)
- {
+2 {
     /* Stop Watchdog  */
     MAP_WDT_A_holdTimer();
 
@@ -98,7 +98,7 @@ int main(void)
     NVIC_SetPriority(TA2_N_IRQn, 2);
 
     NVIC_EnableIRQ (TA3_N_IRQn);
-    NVIC_SetPriority(TA3_N_IRQn, 5);
+    NVIC_SetPriority(TA3_N_IRQn, 2);
 
     NVIC_EnableIRQ (TA0_N_IRQn); // enable capture interrupt
     NVIC_SetPriority(TA0_N_IRQn, 50);
@@ -110,8 +110,9 @@ int main(void)
 
     BacklightPWM(10, .5);
 
-    Steps = 750;
-    TIMER_A3->CCR[2] = 20*32;
+    Steps = 250;
+    Direction = -1;
+    TIMER_A3->CCR[0] = 2*32;
     TIMER_A3->CCTL[2] |= TIMER_A_CCTLN_CCIE;     //enable interrupts
     //BipolarStep(-1, 250, 7); //Run the stepper motor for 250 steps to be sure it's at 0
 
@@ -125,7 +126,7 @@ int main(void)
 
     send16BitData(0x09, 0xFF); //BCD mode
      send16BitData(0x0A, 0x01); // set intensity
-     send16BitData(0x0B, 0x01); // Scan Limit
+     send16BitData(0x0B, 0x02); // Scan Limit
      send16BitData(0x0C, 0x01); // turn on chip
 
 //     send16BitData(0x01, 0x01);
@@ -284,7 +285,7 @@ void MeasurmentDisplay2(void)
 
     //Speed
     //Speed++;
-    sprintf(SpeedS,"%.1f \0", Speed);
+    sprintf(SpeedS,"%.1f  \0", Speed);
     if(strcmp(SpeedSOld, SpeedS) || Reset)
         ST7735_DrawStringV2(6,5, SpeedS ,PrimaryColor,BackgroundColor,3,3);
 
@@ -819,10 +820,17 @@ void TA0_N_IRQHandler(void) // Timer A0 interrupt service routine
 
 void TA3_N_IRQHandler(void) // Timer A0 interrupt service routine
 {
+    __disable_irq ();
     BipolarStep(Direction);
     Steps--;
+    //angle = Steps/3;
     if(Steps ==0)
+    {
         TIMER_A3->CCTL[2] &= ~TIMER_A_CCTLN_CCIE;     //enable interrupts
+        angle = DialSpeed;
+    }
+
+    __enable_irq();
     TIMER_A3->CCTL[2] &= ~(TIMER_A_CCTLN_CCIFG); // Clear the interrupt flag
 }
 
@@ -902,6 +910,7 @@ void T32_INT1_IRQHandler (void)                             //Interrupt Handler 
 
     send16BitData(0x01, (int) Speed%10);
     send16BitData(0x02, ( (int) Speed/10)%10);
+    send16BitData(0x03, ( (int) Speed/100)%10);
 
     I2C1_burstRead(SLAVE_ADDR, 0, 7, timeDateReadback);
 
@@ -937,22 +946,26 @@ void T32_INT1_IRQHandler (void)                             //Interrupt Handler 
     (MeasureScreenCount==0)? MeasurmentDisplay1():
     (MeasureScreenCount==1)? MeasurmentDisplay2():
     (MeasureScreenCount==2)? MeasurmentDisplay3():0;
-    uint8_t DialSpeed = (Speed/120)*180;
+    DialSpeed = (Speed/120)*180;
 
-    if (DialSpeed > angle) // if the result is greater than the angle we're at
+    if(Steps == 0 )
     {
-        Direction = -1;
-        Steps = (DialSpeed-angle);
-        TIMER_A3->CCTL[2] |= TIMER_A_CCTLN_CCIE;     //enable interrupts
-        angle = DialSpeed; // set the new angle
+        if (DialSpeed > angle) // if the result is greater than the angle we're at
+        {
+            Direction = 1;
+            Steps = (DialSpeed-angle)*2;
+            TIMER_A3->CCTL[2] |= TIMER_A_CCTLN_CCIE;     //enable interrupts
+            angle = DialSpeed; // set the new angle
+        }
+        else if (DialSpeed < angle) // if the result is less than the angle we're at
+        {
+            Direction = -1;
+            Steps = (angle-DialSpeed)*2;
+            TIMER_A3->CCTL[2] |= TIMER_A_CCTLN_CCIE;     //enable interrupts
+            angle = DialSpeed; // set the new angle
+        }
     }
-    else if (DialSpeed < angle) // if the result is less than the angle we're at
-    {
-        Direction = 1;
-        Steps = (angle-DialSpeed);
-        TIMER_A3->CCTL[2] |= TIMER_A_CCTLN_CCIE;     //enable interrupts
-        angle = DialSpeed; // set the new angle
-    }
+
 
     strcpy(SecOld, Sec); strcpy(HourOld, Hour); strcpy(MinOld, Min); strcpy(DoWOld, DoW); strcpy(MonthOld, Month); strcpy(DayOld, Day); strcpy(YearOld, Year);
     strcpy(SpeedSOld, SpeedS);
@@ -1058,13 +1071,8 @@ void PORT1_IRQHandler(void)
 
 void PORT3_IRQHandler(void)
 {
-//    static int8_t Testytest =0;
-//    Testytest= !Testytest;
-//    if(Testytest)
-//        Temp= 85;
-//    else
-//        Temp = 70;
-//    SysTick_delay(5);
+
+    while(1);
     P3->IFG = 0; //Clear all flags
     //while(1);
 

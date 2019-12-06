@@ -479,7 +479,7 @@ void BipolarStep(int Direction)
     static int i = 0;
     switch(i){ // move through the cycle
     case 0:
-        BipolarStepperMotor(0,0,1,1);//1010//0011
+        BipolarStepperMotor(1,1,0,0);//1010//0011
         i+=Direction;
         if(i==-1) i = 3;
         break;
@@ -488,7 +488,7 @@ void BipolarStep(int Direction)
         i+=Direction;
         break;
     case 2:
-        BipolarStepperMotor(1,1,0,0);//0101//1100
+        BipolarStepperMotor(0,0,1,1);//0101//1100
         i+=Direction;
         break;
     case 3:
@@ -502,10 +502,10 @@ void BipolarStep(int Direction)
 
 void BipolarStepperMotor(int IN1, int IN2, int IN3, int IN4) // Which pins to pulse
 {
-    if(IN4) P4->OUT |= BIT4; else P3->OUT &=~ BIT4;
-    if(IN3) P4->OUT |= BIT3; else P3->OUT &=~ BIT3;
-    if(IN2) P4->OUT |= BIT2; else P4->OUT &=~ BIT2;
     if(IN1) P4->OUT |= BIT1; else P4->OUT &=~ BIT1;
+    if(IN2) P4->OUT |= BIT2; else P4->OUT &=~ BIT2;
+    if(IN3) P4->OUT |= BIT3; else P4->OUT &=~ BIT3;
+    if(IN4) P4->OUT |= BIT4; else P4->OUT &=~ BIT4;
 }
 
 ////////////////////////////////////////////////////////////
