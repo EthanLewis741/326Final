@@ -483,7 +483,7 @@ static int16_t _height = ST7735_TFTHEIGHT;
 // Outputs: 8-bit reply
 // Assumes: UCA3 and Port 9 have already been initialized and enabled
 uint8_t static writecommand(uint8_t c) {
-    //__disable_interrupts();
+    __disable_interrupts();
     if(LCDSelect == 1){ P9->OUT |= (BIT4); P9->OUT &=~(BIT6);}
     else if(LCDSelect == 2){ P9->OUT |= (BIT6); P9->OUT &=~(BIT4);}
     else if(LCDSelect == 3) P9->OUT |=  (BIT4|BIT6);
@@ -494,7 +494,7 @@ uint8_t static writecommand(uint8_t c) {
     while((EUSCI_A3->IFG&0x0001)==0x0000){};    // wait until EUSCI_A3->RXBUF full
 
     P9->OUT &=~(BIT4|BIT6);
-    //__enable_interrupts();
+    __enable_interrupts();
     return EUSCI_A3->RXBUF;                     // return the response
 }
 
@@ -505,7 +505,7 @@ uint8_t static writecommand(uint8_t c) {
 // Assumes: UCA3 and Port 9 have already been initialized and enabled
 uint8_t static writedata(uint8_t c) {
 
-    //__disable_interrupts();
+    __disable_interrupts();
     if(LCDSelect == 1){ P9->OUT |= (BIT4); P9->OUT &=~(BIT6);}
     else if(LCDSelect == 2){ P9->OUT |= (BIT6); P9->OUT &=~(BIT4);}
     else if(LCDSelect == 3) P9->OUT |=  (BIT4|BIT6);
@@ -517,7 +517,7 @@ uint8_t static writedata(uint8_t c) {
     while(((EUSCI_A3->IFG&0x0001)==0x0000) && (Timeout<=10) ){Timeout++; __delay_cycles(100);};    // wait until EUSCI_A3->RXBUF full
 
     P9->OUT &=~(BIT4|BIT6);
-    //__enable_interrupts();
+    __enable_interrupts();
     uint8_t data = EUSCI_A3->RXBUF;
     return EUSCI_A3->RXBUF;                     // return the response
 }

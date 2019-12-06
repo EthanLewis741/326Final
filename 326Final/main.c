@@ -53,7 +53,7 @@ int8_t Reset = 1;
 int8_t TimePromptCount=0;
 
 int main(void)
-2 {
+{
     /* Stop Watchdog  */
     MAP_WDT_A_holdTimer();
 
@@ -61,17 +61,12 @@ int main(void)
     P9->SEL0 &= ~ (BIT4|BIT6);
     P9->SEL1 &= ~ (BIT4|BIT6);                      // configure P9.2 (D/C), P9.3 (Reset), and P9.4 (TFT_CS) as GPIO
     P9->DIR |=    (BIT4|BIT6);                        // make P9.2 (D/C), P9.3 (Reset), and P9.4 (TFT_CS) out
-//    P9->OUT |=  (BIT4|BIT6);                      // configure P9.2 (D/C), P9.3 (Reset), and P9.4 (TFT_CS) as GPIO
-
-//    P10->SEL0 &= ~ (BIT4);
-//    P10->SEL1 &= ~ (BIT4);                      // configure P9.2 (D/C), P9.3 (Reset), and P9.4 (TFT_CS) as GPIO
-//    P10->DIR |=    (BIT4);
-//    P10->OUT &= ~     (BIT4);
-    // index
-    // halting the watch dog is done in the system_msp432p401r.c startup
 
     ClockInit();// Setting MCLK to 48MHz for faster programming
+    SysTick_delay(500);
     ST7735_InitR(INITR_BLACKTAB); // Initiate the LCD
+    SysTick_delay(500);
+
     TimerA_Capture_Init();
     SpeedInit();
     PinInit();
@@ -122,7 +117,7 @@ int main(void)
 
 
     I2C1_burstRead(SLAVE_ADDR, 0, 7, timeDateReadback);
-    P3->IE      |=  BIT7;
+
 
     send16BitData(0x09, 0xFF); //BCD mode
      send16BitData(0x0A, 0x01); // set intensity
@@ -842,8 +837,6 @@ void TA2_N_IRQHandler(void) // Timer A2 interrupt Rotary Encoder
     int8_t Clock = (P3->IN & BIT0)>>0;
     if(TIMER_A2->CCTL[2] & TIMER_A_CCTLN_CCIFG)
     {
-
-
         if(DT == Clock)
             CCWcount++;
         else
@@ -971,6 +964,11 @@ void T32_INT1_IRQHandler (void)                             //Interrupt Handler 
     strcpy(SpeedSOld, SpeedS);
     strcpy(TempSOld, TempS);
 
+    static uint8_t count=0;
+    if(count > 5)
+        P3->IE      |=  BIT7;
+
+    count++;
     TIMER32_1->LOAD = 3000000;
 }
 
@@ -1071,7 +1069,6 @@ void PORT1_IRQHandler(void)
 
 void PORT3_IRQHandler(void)
 {
-
     while(1);
     P3->IFG = 0; //Clear all flags
     //while(1);

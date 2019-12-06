@@ -661,8 +661,8 @@ int I2C1_burstRead(int slaveAddr, unsigned char memAddr, int byteCount, unsigned
 ///////////////////////////////////////////////////////////
 uint8_t DebounceSwitch1()
 {
-    #define pin         P6
-    #define bit         BIT4
+    #define pin         P3
+    #define bit         BIT7
     static int Init = 1;
     if(Init)
     {
